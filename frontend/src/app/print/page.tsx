@@ -4,7 +4,6 @@ import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 import { ResumePrintDocument } from "@/resume/ResumePrintDocument";
 import { fixtureById } from "../../../tests/fixtures/benchmark-fixtures";
-import "./print.css";
 
 function PrintFixture() {
   const fixtureId = useSearchParams().get("fixture") ?? "single-column";

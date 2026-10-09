@@ -1,6 +1,5 @@
 @page { size: A4; margin: 0; }
 
-body { background: #d9dbdc; }
 .print-root { --accent: #244b45; --font: Arial, "Microsoft YaHei", sans-serif; padding: 18px 0; font-family: var(--font); color: #202322; }
 .resume-page { width: 210mm; height: 297mm; margin: 0 auto 18px; padding: 16mm; background: white; position: relative; overflow: hidden; page-break-after: always; box-shadow: 0 2px 14px #0002; }
 .resume-page:last-child { page-break-after: auto; }
@@ -8,13 +7,13 @@ body { background: #d9dbdc; }
 .decoration.circle { border-radius: 50%; }
 .decoration.divider { height: 1px !important; }
 .resume-page > header, .page-body { position: relative; z-index: 1; }
-header { min-height: 35mm; display: flex; align-items: center; gap: 7mm; border-bottom: 1.2px solid var(--accent); padding-bottom: 5mm; margin-bottom: 6mm; }
-header.continuation { min-height: 12mm; padding-bottom: 3mm; margin-bottom: 4mm; justify-content: space-between; }
-header.continuation h1 { font-size: 15pt; }
-h1 { margin: 0; font-size: 25pt; line-height: 1.1; color: var(--accent); }
+.print-root header { min-height: 35mm; display: flex; align-items: center; gap: 7mm; border-bottom: 1.2px solid var(--accent); padding-bottom: 5mm; margin-bottom: 6mm; }
+.print-root header.continuation { min-height: 12mm; padding-bottom: 3mm; margin-bottom: 4mm; justify-content: space-between; }
+.print-root header.continuation h1 { font-size: 15pt; }
+.print-root h1 { margin: 0; font-size: 25pt; line-height: 1.1; color: var(--accent); }
 .headline { font-size: 11pt; margin: 2mm 0; }
 .contacts { display: flex; flex-wrap: wrap; gap: 2mm 5mm; font-size: 8.5pt; }
-a { color: var(--accent); text-decoration: underline; overflow-wrap: anywhere; word-break: break-word; }
+.print-root a { color: var(--accent); text-decoration: underline; overflow-wrap: anywhere; word-break: break-word; }
 .portrait-frame { border-radius: 50%; flex: 0 0 auto; overflow: hidden; }
 .portrait { width: 100%; height: 100%; object-fit: cover; }
 .page-number { font-size: 8pt; color: #666; }
@@ -27,7 +26,7 @@ a { color: var(--accent); text-decoration: underline; overflow-wrap: anywhere; w
 .item-heading div { min-width: 0; }
 .item-heading span { display: block; color: #59605e; font-size: 8.5pt; }
 .item-heading time { white-space: nowrap; color: #59605e; font-size: 8pt; }
-.page-body p { margin: 1.2mm 0; font-size: 8.5pt; line-height: 1.48; overflow-wrap: anywhere; }
+.page-body p { margin: 1.2mm 0; font-size: var(--body-font-size, 8.5pt); line-height: var(--body-line-height, 1.48); overflow-wrap: anywhere; }
 .bullet { padding-left: 3.5mm; position: relative; }
 .bullet::before { content: "•"; position: absolute; left: .8mm; color: var(--accent); }
 .item-links { display: flex; flex-wrap: wrap; gap: 2mm 4mm; font-size: 8pt; margin: 1mm 0; }

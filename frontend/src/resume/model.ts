@@ -40,7 +40,7 @@ export type ResumeDocument = {
   layout: {
     kind: "single" | "two-column";
     page: { size: "A4"; marginMm: number };
-    theme: { fontFamily: string; accentColor: string };
+    theme: { fontFamily: string; accentColor: string; fontSizePt?: number; lineHeight?: number };
     decorations: Array<{
       id: string;
       type: "rectangle" | "circle" | "header-band" | "divider";

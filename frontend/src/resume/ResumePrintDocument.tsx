@@ -40,8 +40,8 @@ export function ResumePrintDocument({ initialDocument }: { initialDocument: Resu
     return () => cancelAnimationFrame(frame);
   }, [document]);
 
-  return <main className="print-root" style={{ "--accent": document.layout.theme.accentColor, "--font": `'${document.layout.theme.fontFamily}', Arial, 'Microsoft YaHei', sans-serif` } as React.CSSProperties} data-issues={issues.join(",")}>
-    {pages.map((page, index) => <article className={`resume-page ${twoColumn ? "two-column" : "single-column"}`} data-page={index + 1} key={index}>
+  return <main className="print-root" style={{ "--accent": document.layout.theme.accentColor, "--font": `'${document.layout.theme.fontFamily}', Arial, 'Microsoft YaHei', sans-serif`, "--body-font-size": `${document.layout.theme.fontSizePt ?? 8.5}pt`, "--body-line-height": document.layout.theme.lineHeight ?? 1.48 } as React.CSSProperties} data-issues={issues.join(",")}>
+    {pages.map((page, index) => <article className={`resume-page ${twoColumn ? "two-column" : "single-column"}`} style={{ padding: `${document.layout.page.marginMm}mm` }} data-page={index + 1} key={index}>
       {document.layout.decorations.map((decoration) => <i data-decoration-id={decoration.id} key={decoration.id} className={`decoration ${decoration.type}`} style={{ left: `${decoration.xMm}mm`, top: `${decoration.yMm}mm`, width: `${decoration.widthMm}mm`, height: `${decoration.heightMm}mm`, background: decoration.color, transform: `rotate(${decoration.rotation ?? 0}deg)`, zIndex: decoration.zIndex ?? 0 }} />)}
       <header className={index ? "continuation" : ""}>
         {index === 0 && document.profile.portrait && <div className="portrait-frame" style={{ width: `${portraitSize}mm`, height: `${portraitSize}mm` }}>

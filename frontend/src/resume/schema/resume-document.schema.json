@@ -63,7 +63,9 @@
           "required": ["fontFamily", "accentColor"],
           "properties": {
             "fontFamily": { "$ref": "#/$defs/text" },
-            "accentColor": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" }
+            "accentColor": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" },
+            "fontSizePt": { "type": "number", "minimum": 8, "maximum": 13 },
+            "lineHeight": { "type": "number", "minimum": 1.2, "maximum": 1.8 }
           }
         },
         "decorations": {
