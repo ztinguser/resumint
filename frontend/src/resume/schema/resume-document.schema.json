@@ -1,0 +1,140 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://resumint.local/schema/resume-document-1.0.json",
+  "title": "Resumint resume document",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "documentId", "template", "locale", "profile", "layout", "sections"],
+  "properties": {
+    "schemaVersion": { "const": "1.0" },
+    "documentId": { "$ref": "#/$defs/stableId" },
+    "template": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "version"],
+      "properties": {
+        "id": { "$ref": "#/$defs/stableId" },
+        "version": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "locale": { "type": "string", "minLength": 2, "maxLength": 16 },
+    "profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fullName", "headline", "email"],
+      "properties": {
+        "fullName": { "$ref": "#/$defs/text" },
+        "headline": { "$ref": "#/$defs/text" },
+        "email": { "type": "string", "format": "email", "maxLength": 254 },
+        "phone": { "$ref": "#/$defs/text" },
+        "location": { "$ref": "#/$defs/text" },
+        "website": { "$ref": "#/$defs/link" },
+        "portrait": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["src", "alt", "slotSizeMm"],
+          "properties": {
+            "src": { "type": "string", "pattern": "^data:image/(png|jpeg|webp|svg\\+xml);base64," },
+            "alt": { "$ref": "#/$defs/text" },
+            "slotSizeMm": { "type": "number", "minimum": 16, "maximum": 100 },
+            "cropScale": { "type": "number", "minimum": 1, "maximum": 4 }
+          }
+        }
+      }
+    },
+    "layout": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "page", "theme", "decorations"],
+      "properties": {
+        "kind": { "enum": ["single", "two-column"] },
+        "page": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["size", "marginMm"],
+          "properties": {
+            "size": { "const": "A4" },
+            "marginMm": { "type": "number", "minimum": 10, "maximum": 25 }
+          }
+        },
+        "theme": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["fontFamily", "accentColor"],
+          "properties": {
+            "fontFamily": { "$ref": "#/$defs/text" },
+            "accentColor": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" }
+          }
+        },
+        "decorations": {
+          "type": "array",
+          "maxItems": 20,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "type", "anchor", "xMm", "yMm", "widthMm", "heightMm", "color"],
+            "properties": {
+              "id": { "$ref": "#/$defs/stableId" },
+              "type": { "enum": ["rectangle", "circle", "header-band", "divider"] },
+              "anchor": { "enum": ["page", "header"] },
+              "xMm": { "type": "number", "minimum": 0, "maximum": 210 },
+              "yMm": { "type": "number", "minimum": 0, "maximum": 297 },
+              "widthMm": { "type": "number", "exclusiveMinimum": 0, "maximum": 210 },
+              "heightMm": { "type": "number", "exclusiveMinimum": 0, "maximum": 297 },
+              "color": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" }
+            }
+          }
+        }
+      }
+    },
+    "sections": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 40,
+      "items": { "$ref": "#/$defs/section" }
+    }
+  },
+  "$defs": {
+    "stableId": { "type": "string", "pattern": "^[a-z][a-z0-9-]{2,63}$" },
+    "text": { "type": "string", "minLength": 1, "maxLength": 4000 },
+    "link": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["label", "href"],
+      "properties": {
+        "label": { "$ref": "#/$defs/text" },
+        "href": { "type": "string", "format": "uri", "pattern": "^https://" }
+      }
+    },
+    "section": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "title", "column", "visible", "items"],
+      "properties": {
+        "id": { "$ref": "#/$defs/stableId" },
+        "type": { "enum": ["experience", "education", "project", "skills", "custom"] },
+        "title": { "$ref": "#/$defs/text" },
+        "column": { "enum": ["main", "side"] },
+        "visible": { "type": "boolean" },
+        "items": {
+          "type": "array",
+          "maxItems": 100,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "title"],
+            "properties": {
+              "id": { "$ref": "#/$defs/stableId" },
+              "title": { "$ref": "#/$defs/text" },
+              "subtitle": { "$ref": "#/$defs/text" },
+              "date": { "$ref": "#/$defs/text" },
+              "summary": { "$ref": "#/$defs/text" },
+              "bullets": { "type": "array", "maxItems": 40, "items": { "$ref": "#/$defs/text" } },
+              "links": { "type": "array", "maxItems": 10, "items": { "$ref": "#/$defs/link" } }
+            }
+          }
+        }
+      }
+    }
+  }
+}
