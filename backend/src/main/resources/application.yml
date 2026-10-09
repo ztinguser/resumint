@@ -6,3 +6,14 @@ spring:
 
 server:
   port: ${PORT:8080}
+
+resumint:
+  export:
+    print-base-url: ${PRINT_BASE_URL:http://127.0.0.1:3100}
+    worker-enabled: false
+    worker-concurrency: 1
+    queue-capacity: 20
+    max-snapshot-bytes: 524288
+    render-timeout: 45s
+    lease-duration: 60s
+    result-retention: 15m

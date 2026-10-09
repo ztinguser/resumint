@@ -1,0 +1,8 @@
+resumint:
+  export:
+    worker-enabled: true
+    worker-concurrency: 1
+
+spring:
+  main:
+    web-application-type: none

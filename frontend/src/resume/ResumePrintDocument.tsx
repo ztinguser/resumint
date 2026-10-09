@@ -32,6 +32,7 @@ export function ResumePrintDocument({ initialDocument }: { initialDocument: Resu
     window.__RESUMINT_READY__ = false;
     window.renderResume = (next) => {
       assertResumeDocument(next);
+      window.__RESUMINT_READY__ = false;
       setDocument(next);
     };
     const frame = requestAnimationFrame(() => { window.__RESUMINT_READY__ = true; });

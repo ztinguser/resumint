@@ -1,0 +1,3 @@
+resumint:
+  export:
+    worker-enabled: false
