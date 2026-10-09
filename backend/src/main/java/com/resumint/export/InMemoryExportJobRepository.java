@@ -49,12 +49,14 @@ public final class InMemoryExportJobRepository implements ExportJobRepository {
         List<ExportJob> result = new ArrayList<>();
         for (ExportJob original : List.copyOf(jobs.values())) {
             ExportJob job = original;
-            boolean expired = job.resultExpiresAt() != null && !job.resultExpiresAt().isAfter(now);
-            if (expired && job.status() == ExportStatus.SUCCEEDED) {
-                job = copy(job, ExportStatus.EXPIRED, null, null, job.cancelRequested(), job.resultRef(), job.errorCode(), now, job.resultExpiresAt());
+            boolean resultExpired = job.resultExpiresAt() != null && !job.resultExpiresAt().isAfter(now);
+            boolean credentialExpired = !job.credentialExpiresAt().isAfter(now)
+                    && (job.status() == ExportStatus.QUEUED || (job.status() == ExportStatus.RUNNING && job.leaseUntil() != null && !job.leaseUntil().isAfter(now)));
+            if ((resultExpired && job.status() == ExportStatus.SUCCEEDED) || credentialExpired) {
+                job = copy(job, ExportStatus.EXPIRED, null, null, job.cancelRequested(), job.resultRef(), job.errorCode(), now, now);
                 jobs.put(job.id(), job);
             }
-            if (expired && (job.snapshotRef() != null || job.resultRef() != null)) result.add(job);
+            if ((resultExpired || credentialExpired) && (job.snapshotRef() != null || job.resultRef() != null)) result.add(job);
         }
         return result;
     }

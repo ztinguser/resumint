@@ -48,6 +48,13 @@ class ExportPipelineTest {
         assertThat(coordinator.cancel(submitted.job().id(),submitted.credential()).status()).isEqualTo(ExportStatus.CANCELLED);assertThat(coordinator.cancel(submitted.job().id(),submitted.credential()).status()).isEqualTo(ExportStatus.CANCELLED);
     }
 
+    @Test void queuedJobAndSnapshotExpireWithGuestCredential(@TempDir java.nio.file.Path directory) throws Exception {
+        var repository=new InMemoryExportJobRepository();var storage=new ExportStorage(directory,objectMapper);var coordinator=coordinator(repository,storage,limits());var submitted=coordinator.submit("stable-key-07",new ExportSnapshot(validDocument()));
+        assertThat(storage.exists(submitted.job().snapshotRef())).isTrue();
+        var futureClock=Clock.fixed(NOW.plus(Duration.ofMinutes(21)),ZoneOffset.UTC);new ExportWorker(repository,(snapshot,output)->{},limits(),futureClock,storage).cleanupExpired();
+        ExportJob expired=repository.findById(submitted.job().id()).orElseThrow();assertThat(expired.status()).isEqualTo(ExportStatus.EXPIRED);assertThat(expired.snapshotRef()).isNull();assertThat(repository.activeCount()).isZero();
+    }
+
     @Test void rejectsInvalidSchemaOversizedSnapshotsAndFullQueue(@TempDir java.nio.file.Path directory) throws Exception {
         var repository=new InMemoryExportJobRepository();var storage=new ExportStorage(directory,objectMapper);var tiny=new ExportLimits(URI.create("http://127.0.0.1:3100"),1,1,8,Duration.ofSeconds(45),Duration.ofSeconds(60),Duration.ofMinutes(15),Duration.ofMinutes(20));var coordinator=coordinator(repository,storage,tiny);
         assertThatThrownBy(()->coordinator.submit("stable-key-04",new ExportSnapshot(objectMapper.readTree("{}")))).isInstanceOf(ApiException.class).hasMessageContaining("missing");

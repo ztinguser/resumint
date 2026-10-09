@@ -36,7 +36,12 @@ public interface ExportJobMapper {
         UPDATE export_jobs SET cancel_requested=TRUE,status=IF(status='QUEUED','CANCELLED',status),
           result_expires_at=IF(status='QUEUED',#{now},result_expires_at),updated_at=#{now} WHERE id=#{id}
         """) int cancel(@Param("id") UUID id,@Param("now") Instant now);
-    @Update("UPDATE export_jobs SET status='EXPIRED',updated_at=#{now} WHERE status='SUCCEEDED' AND result_expires_at <= #{now}") void expire(Instant now);
+    @Update("""
+        UPDATE export_jobs SET status='EXPIRED',result_expires_at=#{now},lease_owner=NULL,lease_until=NULL,updated_at=#{now}
+        WHERE (status='SUCCEEDED' AND result_expires_at <= #{now})
+           OR (status='QUEUED' AND credential_expires_at <= #{now})
+           OR (status='RUNNING' AND credential_expires_at <= #{now} AND lease_until <= #{now})
+        """) void expire(Instant now);
     @Select("SELECT * FROM export_jobs WHERE result_expires_at <= #{now} AND (snapshot_ref IS NOT NULL OR result_ref IS NOT NULL)") List<ExportJob> cleanupCandidates(Instant now);
     @Update("UPDATE export_jobs SET snapshot_ref=NULL,result_ref=NULL,updated_at=#{now} WHERE id=#{id}") void clearRefs(@Param("id") UUID id,@Param("now") Instant now);
     @Select("SELECT COUNT(*) FROM export_jobs WHERE status IN ('QUEUED','RUNNING')") long activeCount();

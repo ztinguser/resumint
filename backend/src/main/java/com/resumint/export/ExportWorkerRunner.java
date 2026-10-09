@@ -8,10 +8,13 @@ import java.util.concurrent.TimeUnit;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.SmartLifecycle;
 import org.springframework.stereotype.Component;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Component
 @ConditionalOnProperty(name = "resumint.export.worker-enabled", havingValue = "true")
 public final class ExportWorkerRunner implements SmartLifecycle {
+    private static final Logger log=LoggerFactory.getLogger(ExportWorkerRunner.class);
     private final ExportWorker worker;
     private final String workerId = "worker-" + UUID.randomUUID();
     private ScheduledExecutorService executor;
@@ -28,7 +31,10 @@ public final class ExportWorkerRunner implements SmartLifecycle {
             thread.setDaemon(false);
             return thread;
         });
-        executor.scheduleWithFixedDelay(() -> worker.runOnce(workerId), 0, Duration.ofMillis(250).toMillis(), TimeUnit.MILLISECONDS);
+        executor.scheduleWithFixedDelay(() -> {
+            try { worker.runOnce(workerId); }
+            catch (Exception exception) { log.error("Export worker iteration failed; the queue will retry",exception); }
+        }, 0, Duration.ofMillis(250).toMillis(), TimeUnit.MILLISECONDS);
     }
 
     @Override

@@ -22,14 +22,14 @@ server:
 resumint:
   export:
     print-base-url: ${PRINT_BASE_URL:http://127.0.0.1:3100}
-    worker-enabled: false
-    worker-concurrency: 1
-    queue-capacity: 20
-    max-snapshot-bytes: 524288
-    render-timeout: 45s
-    lease-duration: 60s
-    result-retention: 15m
-    credential-ttl: 20m
+    worker-enabled: ${EXPORT_WORKER_ENABLED:false}
+    worker-concurrency: ${EXPORT_WORKER_CONCURRENCY:1}
+    queue-capacity: ${EXPORT_QUEUE_CAPACITY:20}
+    max-snapshot-bytes: ${EXPORT_MAX_SNAPSHOT_BYTES:524288}
+    render-timeout: ${EXPORT_RENDER_TIMEOUT:45s}
+    lease-duration: ${EXPORT_LEASE_DURATION:60s}
+    result-retention: ${EXPORT_RESULT_RETENTION:15m}
+    credential-ttl: ${EXPORT_CREDENTIAL_TTL:20m}
     credential-secret: ${EXPORT_CREDENTIAL_SECRET:dev-only-export-credential-secret-change-me}
     repository: mysql
     storage-root: ${EXPORT_STORAGE_ROOT:${java.io.tmpdir}/resumint-export}
