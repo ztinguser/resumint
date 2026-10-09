@@ -1,0 +1,8 @@
+spring:
+  application:
+    name: resumint
+  main:
+    banner-mode: off
+
+server:
+  port: ${PORT:8080}
