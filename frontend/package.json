@@ -7,8 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "test": "vitest run tests/contracts",
-    "test:layout": "node scripts/run-layout-tests.mjs"
+    "test": "vitest run tests/contracts tests/editor",
+    "test:layout": "node scripts/run-layout-tests.mjs",
+    "test:e2e": "playwright test --config playwright.e2e.config.ts"
   },
   "dependencies": {
     "ajv": "8.17.1",
