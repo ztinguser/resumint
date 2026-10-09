@@ -1,4 +1,6 @@
 export type ResumeLink = { label: string; href: string };
+export type ResumeField = { id: string; label: string; type: "short-text" | "long-text" | "date" | "date-range" | "link"; value: string };
+export type RichTextBlock = { id: string; type: "paragraph" | "bullet"; spans: Array<{ text: string; bold?: boolean; link?: string }> };
 
 export type ResumeItem = {
   id: string;
@@ -8,6 +10,8 @@ export type ResumeItem = {
   summary?: string;
   bullets?: string[];
   links?: ResumeLink[];
+  fields?: ResumeField[];
+  richText?: RichTextBlock[];
 };
 
 export type ResumeSection = {
@@ -46,6 +50,9 @@ export type ResumeDocument = {
       widthMm: number;
       heightMm: number;
       color: string;
+      rotation?: number;
+      zIndex?: number;
+      locked?: boolean;
     }>;
   };
   sections: ResumeSection[];

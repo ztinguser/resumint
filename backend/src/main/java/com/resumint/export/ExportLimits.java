@@ -10,10 +10,11 @@ public record ExportLimits(
         int maxSnapshotBytes,
         Duration renderTimeout,
         Duration leaseDuration,
-        Duration resultRetention) {
+        Duration resultRetention,
+        Duration credentialTtl) {
 
     public static ExportLimits m1Defaults(URI printBaseUrl) {
         return new ExportLimits(printBaseUrl, 1, 20, 524_288,
-                Duration.ofSeconds(45), Duration.ofSeconds(60), Duration.ofMinutes(15));
+                Duration.ofSeconds(45), Duration.ofSeconds(60), Duration.ofMinutes(15), Duration.ofMinutes(20));
     }
 }

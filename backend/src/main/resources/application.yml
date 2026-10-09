@@ -3,6 +3,18 @@ spring:
     name: resumint
   main:
     banner-mode: off
+  datasource:
+    url: ${DB_URL:jdbc:mysql://127.0.0.1:3306/resumint?createDatabaseIfNotExist=true&useUnicode=true&characterEncoding=utf8&serverTimezone=UTC}
+    username: ${DB_USERNAME:resumint}
+    password: ${DB_PASSWORD:resumint}
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+mybatis:
+  type-handlers-package: com.resumint.persistence
+  configuration:
+    map-underscore-to-camel-case: true
 
 server:
   port: ${PORT:8080}
@@ -17,3 +29,11 @@ resumint:
     render-timeout: 45s
     lease-duration: 60s
     result-retention: 15m
+    credential-ttl: 20m
+    credential-secret: ${EXPORT_CREDENTIAL_SECRET:dev-only-export-credential-secret-change-me}
+    repository: mysql
+    storage-root: ${EXPORT_STORAGE_ROOT:${java.io.tmpdir}/resumint-export}
+
+springdoc:
+  api-docs:
+    path: /api/openapi.json

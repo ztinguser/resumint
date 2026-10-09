@@ -15,6 +15,7 @@ declare global {
 function Block({ block }: { block: RenderBlock }) {
   if (block.kind === "section") return <h2 className="section-title">{block.text}</h2>;
   if (block.kind === "item-heading" && block.item) return <div className="item-heading"><div><strong>{block.item.title}</strong>{block.item.subtitle && <span>{block.item.subtitle}</span>}</div>{block.item.date && <time>{block.item.date}</time>}</div>;
+  if ((block.kind === "paragraph" || block.kind === "bullet") && block.richText) return <p className={block.kind === "bullet" ? "bullet" : undefined}>{block.richText.spans.map((span,index) => span.link ? <a key={index} href={span.link}>{span.bold ? <strong>{span.text}</strong> : span.text}</a> : span.bold ? <strong key={index}>{span.text}</strong> : <span key={index}>{span.text}</span>)}</p>;
   if (block.kind === "paragraph") return <p>{block.text}</p>;
   if (block.kind === "bullet") return <p className="bullet">{block.text}</p>;
   if (block.kind === "links") return <div className="item-links">{block.links?.map((link) => <a key={link.href} href={link.href}>{link.label}</a>)}</div>;
@@ -41,7 +42,7 @@ export function ResumePrintDocument({ initialDocument }: { initialDocument: Resu
 
   return <main className="print-root" style={{ "--accent": document.layout.theme.accentColor, "--font": `'${document.layout.theme.fontFamily}', Arial, 'Microsoft YaHei', sans-serif` } as React.CSSProperties} data-issues={issues.join(",")}>
     {pages.map((page, index) => <article className={`resume-page ${twoColumn ? "two-column" : "single-column"}`} data-page={index + 1} key={index}>
-      {document.layout.decorations.map((decoration) => <i key={decoration.id} className={`decoration ${decoration.type}`} style={{ left: `${decoration.xMm}mm`, top: `${decoration.yMm}mm`, width: `${decoration.widthMm}mm`, height: `${decoration.heightMm}mm`, background: decoration.color }} />)}
+      {document.layout.decorations.map((decoration) => <i data-decoration-id={decoration.id} key={decoration.id} className={`decoration ${decoration.type}`} style={{ left: `${decoration.xMm}mm`, top: `${decoration.yMm}mm`, width: `${decoration.widthMm}mm`, height: `${decoration.heightMm}mm`, background: decoration.color, transform: `rotate(${decoration.rotation ?? 0}deg)`, zIndex: decoration.zIndex ?? 0 }} />)}
       <header className={index ? "continuation" : ""}>
         {index === 0 && document.profile.portrait && <div className="portrait-frame" style={{ width: `${portraitSize}mm`, height: `${portraitSize}mm` }}>
           {/* The print renderer must preserve the validated data URI without Next image transformations. */}

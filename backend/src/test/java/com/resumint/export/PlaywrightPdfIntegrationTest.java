@@ -91,7 +91,9 @@ class PlaywrightPdfIntegrationTest {
         ObjectMapper objectMapper = new ObjectMapper();
         var repository = new InMemoryExportJobRepository();
         var limits = ExportLimits.m1Defaults(PRINT_BASE);
-        var coordinator = new ExportCoordinator(repository, new ResumeDocumentSchema(objectMapper), limits, objectMapper, Clock.systemUTC());
+        var storage = new ExportStorage(outputDirectory, objectMapper);
+        var coordinator = new ExportCoordinator(repository, new ResumeDocumentSchema(objectMapper), limits, objectMapper, Clock.systemUTC(), storage,
+                new ExportCredentialService("integration-export-credential-secret-32-chars"));
         var document = objectMapper.readTree("""
                 {
                   "schemaVersion":"1.0",
@@ -103,13 +105,14 @@ class PlaywrightPdfIntegrationTest {
                   "sections":[{"id":"async-section","type":"custom","title":"不可变文档","column":"main","visible":true,"items":[{"id":"async-item","title":"后台生成","summary":"worker 从队列租约中取得提交快照。"}]}]
                 }
                 """);
-        ExportJob job = coordinator.submit("async-worker-key", new ExportSnapshot(document));
-        var worker = new ExportWorker(repository, new PlaywrightPdfRenderer(limits), limits, Clock.systemUTC(), outputDirectory);
+        ExportJob job = coordinator.submit("async-worker-key", new ExportSnapshot(document)).job();
+        var worker = new ExportWorker(repository, new PlaywrightPdfRenderer(limits), limits, Clock.systemUTC(), storage);
 
         assertThat(CompletableFuture.supplyAsync(() -> worker.runOnce("worker-integration")).join()).isTrue();
-        assertThat(job.status()).isEqualTo(ExportStatus.COMPLETED);
-        assertThat(job.result()).exists();
-        try (PDDocument pdf = Loader.loadPDF(job.result().toFile())) {
+        ExportJob completed = repository.findById(job.id()).orElseThrow();
+        assertThat(completed.status()).isEqualTo(ExportStatus.SUCCEEDED);
+        assertThat(storage.exists(completed.resultRef())).isTrue();
+        try (PDDocument pdf = Loader.loadPDF(storage.resultPath(completed.resultRef()).toFile())) {
             assertThat(new PDFTextStripper().getText(pdf).replaceAll("\\s+", ""))
                     .contains("异步快照", "不可变文档", "worker从队列租约中取得提交快照。");
             assertThat(extractLinks(pdf)).contains("https://example.com/export");
