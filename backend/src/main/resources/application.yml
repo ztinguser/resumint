@@ -24,6 +24,8 @@ resumint:
     session-ttl: ${AUTH_SESSION_TTL:12h}
     trusted-device-ttl: ${AUTH_TRUSTED_DEVICE_TTL:180d}
     inactivity-risk-age: ${AUTH_INACTIVITY_RISK_AGE:180d}
+    password-min-length: ${AUTH_PASSWORD_MIN_LENGTH:6}
+    password-max-length: ${AUTH_PASSWORD_MAX_LENGTH:72}
     phone-lookup-secret: ${AUTH_PHONE_LOOKUP_SECRET:dev-only-phone-lookup-secret-change-me}
     cookie-secure: ${AUTH_COOKIE_SECURE:false}
   sms:

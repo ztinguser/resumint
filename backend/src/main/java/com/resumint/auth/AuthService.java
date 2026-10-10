@@ -21,13 +21,18 @@ public class AuthService {
     private final Duration sessionTtl;
     private final Duration trustedDeviceTtl;
     private final Duration inactivityRiskAge;
+    private final int passwordMinLength;
+    private final int passwordMaxLength;
 
     AuthService(AuthRepository repository, SmsVerificationService sms, PasswordEncoder passwordEncoder, Clock clock,
             @Value("${resumint.auth.session-ttl}") Duration sessionTtl,
             @Value("${resumint.auth.trusted-device-ttl}") Duration trustedDeviceTtl,
-            @Value("${resumint.auth.inactivity-risk-age}") Duration inactivityRiskAge) {
+            @Value("${resumint.auth.inactivity-risk-age}") Duration inactivityRiskAge,
+            @Value("${resumint.auth.password-min-length}") int passwordMinLength,
+            @Value("${resumint.auth.password-max-length}") int passwordMaxLength) {
         this.repository=repository; this.sms=sms; this.passwordEncoder=passwordEncoder; this.clock=clock;
         this.sessionTtl=sessionTtl; this.trustedDeviceTtl=trustedDeviceTtl; this.inactivityRiskAge=inactivityRiskAge;
+        this.passwordMinLength=passwordMinLength; this.passwordMaxLength=passwordMaxLength;
     }
 
     @Transactional(noRollbackFor=ApiException.class)
@@ -138,9 +143,11 @@ public class AuthService {
                 registered, session, device);
     }
     private static ApiException invalidCredentials() { return new ApiException(HttpStatus.UNAUTHORIZED, "INVALID_CREDENTIALS", "手机号或密码错误"); }
-    private static void validatePassword(String password) {
-        if (password == null || password.length() < 8 || password.length() > 72 || !password.matches(".*[A-Za-z].*") || !password.matches(".*\\d.*"))
-            throw new ApiException(HttpStatus.BAD_REQUEST, "WEAK_PASSWORD", "密码需为 8–72 位并同时包含字母和数字");
+    private void validatePassword(String password) {
+        if (password == null || password.length() < passwordMinLength || password.length() > passwordMaxLength
+                || !password.matches(".*[A-Za-z].*") || !password.matches(".*\\d.*"))
+            throw new ApiException(HttpStatus.BAD_REQUEST, "WEAK_PASSWORD",
+                    "密码需为 " + passwordMinLength + "–" + passwordMaxLength + " 位并同时包含字母和数字");
     }
     record LoginResult(UUID userId, String maskedPhone, String avatar, boolean passwordSet, boolean registered,
                        AuthRepository.SessionTokens session, AuthRepository.DeviceToken device) { }

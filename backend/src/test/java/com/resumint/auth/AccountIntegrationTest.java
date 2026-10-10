@@ -75,11 +75,14 @@ class AccountIntegrationTest {
         Cookie csrf = cookie(login, AuthSessionFilter.CSRF_COOKIE);
         mvc.perform(get("/api/me").cookie(session)).andExpect(status().isOk()).andExpect(jsonPath("$.maskedPhone").value("+86 138****8000"));
         mvc.perform(put("/api/me/password").cookie(session, csrf).header("X-XSRF-TOKEN", csrf.getValue())
-                        .contentType(MediaType.APPLICATION_JSON).content("{\"newPassword\":\"secure123\"}"))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"newPassword\":\"abc123\"}"))
                 .andExpect(status().isOk());
         mvc.perform(post("/api/auth/password-login").contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"phone\":\"13800138000\",\"password\":\"secure123\"}"))
+                        .content("{\"phone\":\"13800138000\",\"password\":\"abc123\"}"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.passwordSet").value(true));
+        mvc.perform(put("/api/me/password").cookie(session, csrf).header("X-XSRF-TOKEN", csrf.getValue())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"currentPassword\":\"abc123\",\"newPassword\":\"ab123\"}"))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("WEAK_PASSWORD"));
     }
 
     @Test void csrfAndExpiredSessionsAreRejected() throws Exception {
