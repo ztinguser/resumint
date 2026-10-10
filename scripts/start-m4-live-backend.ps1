@@ -20,17 +20,17 @@ function Read-SecretText([string]$Prompt) {
 }
 
 if (-not (Get-Command mvn -ErrorAction SilentlyContinue)) {
-    throw "未找到 mvn，请先安装 Maven 并加入 PATH。"
+    throw "Maven (mvn) was not found. Install Maven and add it to PATH."
 }
 
-$accessKeyId = Read-SecretText "输入 RAM AccessKey ID（输入不会显示）"
-$accessKeySecret = Read-SecretText "输入 RAM AccessKey Secret（输入不会显示）"
-$signName = Read-Host "输入控制台快速测试中显示的签名名称"
+$accessKeyId = Read-SecretText "RAM AccessKey ID (hidden input)"
+$accessKeySecret = Read-SecretText "RAM AccessKey Secret (hidden input)"
+$signName = Read-Host "SMS signature name from the successful console test"
 
 if ([string]::IsNullOrWhiteSpace($accessKeyId) -or
     [string]::IsNullOrWhiteSpace($accessKeySecret) -or
     [string]::IsNullOrWhiteSpace($signName)) {
-    throw "AccessKey ID、AccessKey Secret 和签名名称都不能为空。"
+    throw "AccessKey ID, AccessKey Secret, and SMS signature name are required."
 }
 
 $lookupBytes = [byte[]]::new(32)
@@ -58,12 +58,12 @@ try {
     $env:DB_USERNAME = $DatabaseUsername
     $env:DB_PASSWORD = $DatabasePassword
 
-    Write-Host "正在以前台方式启动 M4 真实短信后端。密钥仅存在于本进程内存。" -ForegroundColor Cyan
-    Write-Host "联调结束后按 Ctrl+C；请勿复制或截图终端中的敏感信息。" -ForegroundColor Yellow
+    Write-Host "Starting the M4 live-SMS backend in the foreground. Secrets remain in process memory only." -ForegroundColor Cyan
+    Write-Host "Press Ctrl+C when testing is complete. Do not copy or screenshot sensitive terminal input." -ForegroundColor Yellow
     Push-Location $backendDirectory
     try {
         & mvn spring-boot:run
-        if ($LASTEXITCODE -ne 0) { throw "后端启动失败，Maven 退出码：$LASTEXITCODE" }
+        if ($LASTEXITCODE -ne 0) { throw "Backend startup failed. Maven exit code: $LASTEXITCODE" }
     }
     finally {
         Pop-Location
