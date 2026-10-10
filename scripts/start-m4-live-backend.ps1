@@ -2,7 +2,8 @@
 param(
     [string]$DatabaseUrl = "jdbc:mysql://127.0.0.1:33306/resumint_m4_live?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC",
     [string]$DatabaseUsername = "resumint",
-    [string]$DatabasePassword = "resumint"
+    [string]$DatabasePassword = "resumint",
+    [switch]$RefreshCredentials
 )
 
 $ErrorActionPreference = "Stop"
@@ -27,9 +28,42 @@ if (-not (Get-Command mvn -ErrorAction SilentlyContinue)) {
     throw "Maven (mvn) was not found. Install Maven and add it to PATH."
 }
 
-$accessKeyId = Read-SecretText "RAM AccessKey ID (hidden input)"
-$accessKeySecret = Read-SecretText "RAM AccessKey Secret (hidden input)"
-$signName = Read-Host "SMS signature name from the successful console test"
+$stateDirectory = Join-Path $env:LOCALAPPDATA "Resumint"
+$credentialPath = Join-Path $stateDirectory "m4-alibaba-credential.xml"
+$settingsPath = Join-Path $stateDirectory "m4-sms-settings.json"
+$lookupSecretPath = Join-Path $stateDirectory "m4-phone-lookup-secret.xml"
+New-Item -ItemType Directory -Path $stateDirectory -Force | Out-Null
+
+if ($RefreshCredentials) {
+    Remove-Item -LiteralPath $credentialPath -Force -ErrorAction SilentlyContinue
+    Remove-Item -LiteralPath $settingsPath -Force -ErrorAction SilentlyContinue
+}
+
+if ((Test-Path -LiteralPath $credentialPath) -and (Test-Path -LiteralPath $settingsPath)) {
+    $credential = Import-Clixml -LiteralPath $credentialPath
+    $settings = Get-Content -LiteralPath $settingsPath -Raw | ConvertFrom-Json
+    $accessKeyId = $credential.UserName
+    $accessKeySecret = Convert-SecretToText $credential.Password
+    $signName = $settings.signName
+    Write-Host "Loaded DPAPI-protected Alibaba Cloud credentials from the current Windows profile." -ForegroundColor Green
+}
+else {
+    $accessKeyId = Read-SecretText "RAM AccessKey ID (hidden input)"
+    $accessKeySecret = Read-SecretText "RAM AccessKey Secret (hidden input)"
+    $signName = Read-Host "SMS signature name from the successful console test"
+
+    if ([string]::IsNullOrWhiteSpace($accessKeyId) -or
+        [string]::IsNullOrWhiteSpace($accessKeySecret) -or
+        [string]::IsNullOrWhiteSpace($signName)) {
+        throw "AccessKey ID, AccessKey Secret, and SMS signature name are required."
+    }
+
+    $secureAccessKeySecret = ConvertTo-SecureString $accessKeySecret -AsPlainText -Force
+    [System.Management.Automation.PSCredential]::new($accessKeyId, $secureAccessKeySecret) |
+        Export-Clixml -LiteralPath $credentialPath
+    @{ signName = $signName } | ConvertTo-Json | Set-Content -LiteralPath $settingsPath -Encoding UTF8
+    Write-Host "Saved credentials with Windows DPAPI outside the repository." -ForegroundColor Green
+}
 
 if ([string]::IsNullOrWhiteSpace($accessKeyId) -or
     [string]::IsNullOrWhiteSpace($accessKeySecret) -or
@@ -37,8 +71,6 @@ if ([string]::IsNullOrWhiteSpace($accessKeyId) -or
     throw "AccessKey ID, AccessKey Secret, and SMS signature name are required."
 }
 
-$stateDirectory = Join-Path $env:LOCALAPPDATA "Resumint"
-$lookupSecretPath = Join-Path $stateDirectory "m4-phone-lookup-secret.xml"
 if (Test-Path -LiteralPath $lookupSecretPath) {
     $lookupSecret = Convert-SecretToText (Import-Clixml -LiteralPath $lookupSecretPath)
 }
@@ -53,7 +85,6 @@ else {
         $random.Dispose()
         [Array]::Clear($lookupBytes, 0, $lookupBytes.Length)
     }
-    New-Item -ItemType Directory -Path $stateDirectory -Force | Out-Null
     ConvertTo-SecureString $lookupSecret -AsPlainText -Force | Export-Clixml -LiteralPath $lookupSecretPath
 }
 

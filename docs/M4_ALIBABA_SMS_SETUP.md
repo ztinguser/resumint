@@ -56,10 +56,13 @@ AUTH_COOKIE_SECURE=true
 手机号索引密钥的配置。
 
 本机真实联调优先运行 `scripts/start-m4-live-backend.ps1`。脚本会隐藏读取 AccessKey，
-并只把 AccessKey 注入当前后端进程。手机号索引密钥首次运行时生成，并使用当前 Windows
-用户的 DPAPI 加密后保存在仓库外的 `%LOCALAPPDATA%\Resumint`，保证应用重启后仍能查找
-同一账号；它不会以明文写入仓库、数据库或磁盘。默认连接本机 `33306` 端口的隔离
-`resumint_m4_live` 数据库，可通过脚本参数覆盖。
+使用当前 Windows 用户的 DPAPI 加密后保存在仓库外的 `%LOCALAPPDATA%\Resumint`，并只
+把解密结果注入当前后端进程。手机号索引密钥也在首次运行时生成并以同样方式保存，保证
+应用重启后仍能查找同一账号；这些秘密不会以明文写入仓库、数据库或磁盘。签名名称不是
+秘密，单独保存在同一仓库外目录。轮换 AccessKey 或签名时使用脚本参数
+`-RefreshCredentials` 重新录入。默认连接本机 `33306` 端口的隔离 `resumint_m4_live`
+数据库，可通过脚本参数覆盖。生产环境不使用该本机文件，仍应由部署平台 Secret Manager
+注入环境变量。
 
 ## 联调证据
 
