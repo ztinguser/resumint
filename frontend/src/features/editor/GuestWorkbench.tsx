@@ -1,17 +1,24 @@
 "use client";
 
 import { useEffect, useMemo, useReducer, useRef, useState } from "react";
+import {useRouter}from"next/navigation";
 import { ResumePrintDocument } from "@/resume/ResumePrintDocument";
 import { describeLayoutIssues, paginateResume } from "@/resume/pagination";
 import type { ResumeDocument, ResumeItem, ResumeSection } from "@/resume/model";
 import { createBenchmarkDocument } from "@/resume/templates/benchmark";
 import { cloneDocument, historyReducer, move } from "./history";
 import { exportResume } from "@/features/export/export-client";
+import { LoginBubble } from "@/features/auth/LoginBubble";
+import { ApiError, apiFetch, currentUser, type CurrentUser } from "@/features/auth/auth-client";
+import { edited, initialSaveState, loadedSaved, saveFailed, saveStarted, saveSucceeded, type SaveState } from "./save-state";
 
 const sectionLabels: Record<ResumeSection["type"], string> = { experience: "工作经历", education: "教育经历", project: "项目经历", skills: "技能", custom: "自定义模块" };
 const newId = (prefix: string) => `${prefix}-${crypto.randomUUID()}`;
 
-export function GuestWorkbench({templateId}:{templateId:string}) {
+type Draft={id:string;title:string;templateId:string;templateVersion:number;schemaVersion:string;document:ResumeDocument;revision:number;updatedAt:string};
+
+export function GuestWorkbench({templateId,initialDraftId}:{templateId:string;initialDraftId?:string}) {
+  const router=useRouter();
   const [history, dispatch] = useReducer(historyReducer, undefined, () => ({ past: [], present: createBenchmarkDocument(), future: [] }));
   const [selectedSectionId, setSelectedSectionId] = useState("work-experience");
   const [selectedDecorationId, setSelectedDecorationId] = useState("header-divider");
@@ -21,6 +28,15 @@ export function GuestWorkbench({templateId}:{templateId:string}) {
   const [templateReady, setTemplateReady] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [dragDocument, setDragDocument] = useState<ResumeDocument | null>(null);
+  const [user,setUser]=useState<CurrentUser|null>(null);
+  const [loginOpen,setLoginOpen]=useState(false);
+  const [draftId,setDraftId]=useState<string|undefined>(initialDraftId);
+  const [serverRevision,setServerRevision]=useState<number|null>(null);
+  const [documentTitle,setDocumentTitle]=useState("未命名简历");
+  const [saveState,setSaveState]=useState<SaveState>(initialSaveState);
+  const [conflict,setConflict]=useState<Draft|null>(null);
+  const [compareConflict,setCompareConflict]=useState(false);
+  const [logoutPrompt,setLogoutPrompt]=useState(false);
   const dragRef = useRef<{ id: string; startX: number; startY: number; originX: number; originY: number } | null>(null);
   const exportAbortRef = useRef<AbortController | null>(null);
   const document = dragDocument ?? history.present;
@@ -30,16 +46,22 @@ export function GuestWorkbench({templateId}:{templateId:string}) {
 
   useEffect(() => {
     const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ""; };
-    window.addEventListener("beforeunload", warn); return () => window.removeEventListener("beforeunload", warn);
-  }, []);
+    if(["unsaved","dirty","failed","saving"].includes(saveState.status))window.addEventListener("beforeunload", warn); return () => window.removeEventListener("beforeunload", warn);
+  }, [saveState.status]);
+
+  useEffect(()=>{let active=true;currentUser().then(async(value)=>{if(!active)return;setUser(value);
+    if(value&&initialDraftId){try{const draft=await apiFetch<Draft>(`/api/resumes/${initialDraftId}`);if(!active)return;dispatch({type:"replace",document:draft.document});setDocumentTitle(draft.title);setDraftId(draft.id);setServerRevision(draft.revision);setSaveState(loadedSaved());setTemplateReady(true);}catch(error){if(active)setNotice(error instanceof Error?error.message:"草稿加载失败");}}
+  }).catch(()=>{});return()=>{active=false;};},[initialDraftId]);
 
   useEffect(() => {
+    if(initialDraftId)return;
     let active=true;
     fetch(`/api/templates/${encodeURIComponent(templateId)}`,{cache:"no-store"}).then(async(response)=>{if(!response.ok)throw new Error("所选模板不可用");return response.json() as Promise<{id:string;version:number}>;}).then((template)=>{if(!active)return;const next=createBenchmarkDocument();next.template={id:template.id,version:template.version};dispatch({type:"commit",document:next});setTemplateReady(true);}).catch((error)=>{if(active)setNotice(error instanceof Error?error.message:"模板加载失败");});
     return()=>{active=false;};
-  },[templateId]);
+  },[templateId,initialDraftId]);
 
-  const commit = (mutate: (next: ResumeDocument) => void) => { const next = cloneDocument(history.present); mutate(next); dispatch({ type: "commit", document: next }); };
+  const commit = (mutate: (next: ResumeDocument) => void) => { const next = cloneDocument(history.present); mutate(next); dispatch({ type: "commit", document: next }); setSaveState(current=>edited(current)); };
+  const historyAction=(type:"undo"|"redo")=>{dispatch({type});setSaveState(current=>edited(current));};
   const updateSection = (id: string, mutate: (section: ResumeSection) => void) => commit((next) => { const section = next.sections.find((value) => value.id === id); if (section) mutate(section); });
   const updateItem = (sectionId: string, itemId: string, mutate: (item: ResumeItem) => void) => updateSection(sectionId, (section) => { const item = section.items.find((value) => value.id === itemId); if (item) mutate(item); });
 
@@ -58,7 +80,7 @@ export function GuestWorkbench({templateId}:{templateId:string}) {
     const next = cloneDocument(history.present); const item = next.layout.decorations.find((value) => value.id === drag.id); if (!item) return;
     const pxPerMm = 96 / 25.4 * zoom; item.xMm = Math.max(0, Math.min(210 - item.widthMm, Math.round((drag.originX + (event.clientX - drag.startX) / pxPerMm) / 2) * 2)); item.yMm = Math.max(0, Math.min(297 - item.heightMm, Math.round((drag.originY + (event.clientY - drag.startY) / pxPerMm) / 2) * 2)); setDragDocument(next);
   };
-  const endDecorationDrag = () => { if (dragDocument) dispatch({ type: "commit", document: dragDocument }); dragRef.current = null; setDragDocument(null); };
+  const endDecorationDrag = () => { if (dragDocument) { dispatch({ type: "commit", document: dragDocument }); setSaveState(current=>edited(current)); } dragRef.current = null; setDragDocument(null); };
 
   const startExport = async () => {
     setNotice(null); setExportState("正在提交…"); const controller=new AbortController();exportAbortRef.current=controller;
@@ -67,18 +89,44 @@ export function GuestWorkbench({templateId}:{templateId:string}) {
     finally{exportAbortRef.current=null;}
   };
 
+  const createDraft=async(snapshot:ResumeDocument,title=documentTitle)=>{
+    const saved=await apiFetch<Draft>("/api/resumes",{method:"POST",body:JSON.stringify({title,templateId:snapshot.template.id,templateVersion:snapshot.template.version,schemaVersion:snapshot.schemaVersion,document:snapshot})});
+    setDraftId(saved.id);setServerRevision(saved.revision);setDocumentTitle(saved.title);return saved;
+  };
+  const saveDraft=async(forceNew=false)=>{
+    if(!user){setLoginOpen(true);return false;}const snapshot=cloneDocument(history.present);const submittedRevision=saveState.localRevision;
+    setNotice(null);setSaveState(current=>saveStarted(current));
+    try{
+      const saved=forceNew||!draftId?await createDraft(snapshot,forceNew?`${documentTitle}（冲突副本）`:documentTitle):await apiFetch<Draft>(`/api/resumes/${draftId}`,{method:"PUT",body:JSON.stringify({baseRevision:serverRevision,title:documentTitle,document:snapshot})});
+      setDraftId(saved.id);setServerRevision(saved.revision);setConflict(null);setCompareConflict(false);
+      setSaveState(current=>saveSucceeded({...current,savingRevision:submittedRevision}));return true;
+    }catch(error){
+      if(error instanceof ApiError&&error.status===401){setUser(null);setLoginOpen(true);setNotice("会话已过期，当前编辑内容仍在；重新登录后请再次手动保存。");}
+      else if(error instanceof ApiError&&error.status===409&&draftId){try{setConflict(await apiFetch<Draft>(`/api/resumes/${draftId}`));}catch{setNotice("检测到版本冲突，但暂时无法读取服务器版本。");}}
+      else setNotice(error instanceof Error?error.message:"保存失败，请重试");
+      setSaveState(current=>saveFailed(current));return false;
+    }
+  };
+  const reloadConflict=()=>{if(!conflict)return;dispatch({type:"replace",document:conflict.document});setDocumentTitle(conflict.title);setServerRevision(conflict.revision);setSaveState(current=>loadedSaved(current.localRevision));setConflict(null);setCompareConflict(false);};
+  const closeLogin=()=>{sessionStorage.setItem("resumint-login-dismissed","1");setLoginOpen(false);};
+  const performLogout=async()=>{try{await apiFetch<void>("/api/auth/logout",{method:"POST"});}finally{setUser(null);setDraftId(undefined);setServerRevision(null);setSaveState(initialSaveState);setLogoutPrompt(false);}};
+  const requestLogout=()=>{if(["unsaved","dirty","failed","saving"].includes(saveState.status))setLogoutPrompt(true);else void performLogout();};
+
   const emailError=/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(document.profile.email)?"":"请输入有效邮箱地址";
   const websiteError=document.profile.website&&!/^https?:\/\//i.test(document.profile.website.href)?"链接需以 http:// 或 https:// 开头":"";
   const exporting=exportState.includes("…");
+  const saveLabel=({unsaved:"未保存",saving:"保存中…",saved:"已保存",dirty:"有未保存更改",failed:"保存失败"} as const)[saveState.status];
 
   return <main className="workbench">
     <header className="workbench-topbar">
       <a className="brand" href="/templates">Resumint</a><span className="divider" />
-      <strong className="document-title">游客简历</strong><span className="unsaved"><i /> 有未保存更改</span>
-      <div className="topbar-actions"><button aria-label="撤销" disabled={!history.past.length} onClick={() => dispatch({ type: "undo" })}>↶</button><button aria-label="重做" disabled={!history.future.length} onClick={() => dispatch({ type: "redo" })}>↷</button><button className="secondary" onClick={() => setNotice("游客模式不创建草稿；登录与手动保存属于 M4。")}>保存</button>{exporting&&<button className="secondary" onClick={()=>exportAbortRef.current?.abort()}>取消导出</button>}<button className="primary" disabled={exporting||!templateReady||!!emailError||!!websiteError} onClick={startExport}>{templateReady?exportState:"加载模板…"}</button></div>
+      <input aria-label="简历名称" className="document-title title-input" maxLength={120} value={documentTitle} onChange={event=>{setDocumentTitle(event.target.value);setSaveState(current=>edited(current));}}/><span className={`unsaved save-${saveState.status}`}><i /> {saveLabel}</span>
+      <div className="topbar-actions"><button aria-label="撤销" disabled={!history.past.length} onClick={() => historyAction("undo")}>↶</button><button aria-label="重做" disabled={!history.future.length} onClick={() => historyAction("redo")}>↷</button><button className="secondary" disabled={saveState.status==="saving"} onClick={()=>void saveDraft()}>保存</button>{exporting&&<button className="secondary" onClick={()=>exportAbortRef.current?.abort()}>取消导出</button>}<button className="primary" disabled={exporting||!templateReady||!!emailError||!!websiteError} onClick={startExport}>{templateReady?exportState:"加载模板…"}</button><div className="account-anchor"><button aria-label="账号菜单" onClick={()=>user?router.push("/account"):setLoginOpen(value=>!value)}>{user?user.maskedPhone:"登录"}</button><LoginBubble open={loginOpen} onClose={closeLogin} onLogin={value=>{setUser(value);sessionStorage.removeItem("resumint-login-dismissed");}}/></div>{user&&<button className="logout-link" onClick={requestLogout}>退出</button>}</div>
     </header>
-    <div className="guest-warning" role="status">当前为游客模式，内容尚未保存。刷新或关闭页面后将无法恢复；登录后可手动保存草稿。</div>
+    {!user&&<div className="guest-warning" role="status">当前为游客模式，内容尚未保存。刷新或关闭页面后将无法恢复；<button onClick={()=>setLoginOpen(true)}>登录后手动保存</button>。</div>}
     {notice && <div className="toast" role="alert"><span>{notice}</span><button aria-label="关闭提示" onClick={() => setNotice(null)}>×</button></div>}
+    {conflict&&<div className="dialog-backdrop"><section className="conflict-dialog" role="dialog" aria-label="版本冲突"><span className="eyebrow">HTTP 409</span><h2>服务器版本已更新</h2><p>本地工作副本仍完整保留。服务器当前为修订 {conflict.revision}，更新于 {new Date(conflict.updatedAt).toLocaleString()}。</p>{compareConflict&&<div className="conflict-compare"><div><strong>本地</strong><pre>{JSON.stringify(history.present.profile,null,2)}</pre></div><div><strong>服务器</strong><pre>{JSON.stringify(conflict.document.profile,null,2)}</pre></div></div>}<div className="dialog-actions"><button onClick={reloadConflict}>重新加载服务器版本</button><button onClick={()=>void saveDraft(true)}>本地另存为新草稿</button><button onClick={()=>setCompareConflict(true)}>查看差异并人工合并</button><button onClick={()=>setConflict(null)}>保留本地，稍后处理</button></div></section></div>}
+    {logoutPrompt&&<div className="dialog-backdrop"><section className="conflict-dialog" role="dialog" aria-label="退出确认"><h2>还有未保存更改</h2><p>退出不会偷偷保存。请选择继续编辑、先手动保存，或放弃本次更改后退出。</p><div className="dialog-actions"><button onClick={()=>setLogoutPrompt(false)}>继续编辑</button><button onClick={async()=>{if(await saveDraft())await performLogout();}}>保存后退出</button><button className="danger" onClick={()=>void performLogout()}>放弃并退出</button></div></section></div>}
     <div className="workbench-grid">
       <aside className="editor-panel">
         <div className="panel-heading"><div><span className="eyebrow">内容结构</span><h1>简历内容</h1></div><button onClick={() => { const id=newId("section"); commit((next)=>next.sections.push({id,type:"custom",title:"自定义模块",column:"main",visible:true,items:[]})); setSelectedSectionId(id); }}>＋ 模块</button></div>
