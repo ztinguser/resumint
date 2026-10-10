@@ -34,7 +34,13 @@ if ([string]::IsNullOrWhiteSpace($accessKeyId) -or
 }
 
 $lookupBytes = [byte[]]::new(32)
-[Security.Cryptography.RandomNumberGenerator]::Fill($lookupBytes)
+$random = [Security.Cryptography.RandomNumberGenerator]::Create()
+try {
+    $random.GetBytes($lookupBytes)
+}
+finally {
+    $random.Dispose()
+}
 
 $secretNames = @(
     "ALIBABA_CLOUD_ACCESS_KEY_ID",
@@ -52,7 +58,7 @@ try {
     $env:ALIBABA_CLOUD_SMS_PHONE_CHANGE_OLD_TEMPLATE_CODE = "100005"
     $env:ALIBABA_CLOUD_SMS_PHONE_CHANGE_NEW_TEMPLATE_CODE = "100004"
     Remove-Item Env:ALIBABA_CLOUD_SMS_SCHEME_NAME -ErrorAction SilentlyContinue
-    $env:AUTH_PHONE_LOOKUP_SECRET = [Convert]::ToHexString($lookupBytes)
+    $env:AUTH_PHONE_LOOKUP_SECRET = ([BitConverter]::ToString($lookupBytes)).Replace("-", "").ToLowerInvariant()
     $env:AUTH_COOKIE_SECURE = "false"
     $env:DB_URL = $DatabaseUrl
     $env:DB_USERNAME = $DatabaseUsername
