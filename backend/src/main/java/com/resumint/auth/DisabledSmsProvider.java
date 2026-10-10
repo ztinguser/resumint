@@ -9,7 +9,7 @@ import org.springframework.stereotype.Component;
 @ConditionalOnProperty(name="resumint.sms.provider", havingValue="disabled", matchIfMissing=true)
 final class DisabledSmsProvider implements SmsProvider {
     @Override public String name() { return "disabled"; }
-    @Override public SendResult send(String phoneNational, String outId) {
+    @Override public SendResult send(String phoneNational, String outId, String purpose) {
         throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE, "SMS_NOT_CONFIGURED", "短信服务尚未安全配置");
     }
     @Override public boolean verify(String phoneNational, String outId, String code) { return false; }

@@ -15,21 +15,26 @@ import org.springframework.stereotype.Component;
 final class AlibabaSmsProvider implements SmsProvider {
     private final Client client;
     private final String signName;
-    private final String templateCode;
+    private final java.util.Map<String, String> templateCodes;
     private final String schemeName;
     private final long validSeconds;
 
     AlibabaSmsProvider(
             @Value("${resumint.sms.endpoint}") String endpoint,
             @Value("${resumint.sms.sign-name}") String signName,
-            @Value("${resumint.sms.template-code}") String templateCode,
+            @Value("${resumint.sms.login-template-code}") String loginTemplateCode,
+            @Value("${resumint.sms.password-reset-template-code}") String passwordResetTemplateCode,
+            @Value("${resumint.sms.phone-change-old-template-code}") String phoneChangeOldTemplateCode,
+            @Value("${resumint.sms.phone-change-new-template-code}") String phoneChangeNewTemplateCode,
             @Value("${resumint.sms.scheme-name}") String schemeName,
             @Value("${resumint.auth.phone-lookup-secret}") String phoneLookupSecret,
             @Value("${resumint.sms.code-minutes}") long codeMinutes) throws Exception {
         String accessKeyId = System.getenv("ALIBABA_CLOUD_ACCESS_KEY_ID");
         String accessKeySecret = System.getenv("ALIBABA_CLOUD_ACCESS_KEY_SECRET");
-        if (blank(accessKeyId) || blank(accessKeySecret) || blank(signName) || blank(templateCode) || blank(schemeName)) {
-            throw new IllegalStateException("Alibaba SMS requires environment credentials, sign name, template code and scheme name");
+        if (blank(accessKeyId) || blank(accessKeySecret) || blank(signName)
+                || blank(loginTemplateCode) || blank(passwordResetTemplateCode)
+                || blank(phoneChangeOldTemplateCode) || blank(phoneChangeNewTemplateCode)) {
+            throw new IllegalStateException("Alibaba SMS requires environment credentials, sign name and all purpose-specific template codes");
         }
         if (phoneLookupSecret.startsWith("dev-only-")) {
             throw new IllegalStateException("Alibaba SMS requires a non-default phone lookup secret");
@@ -37,21 +42,26 @@ final class AlibabaSmsProvider implements SmsProvider {
         Config config = new Config().setAccessKeyId(accessKeyId).setAccessKeySecret(accessKeySecret).setEndpoint(endpoint);
         this.client = new Client(config);
         this.signName = signName;
-        this.templateCode = templateCode;
+        this.templateCodes = java.util.Map.of(
+                "LOGIN", loginTemplateCode,
+                "PASSWORD_RESET", passwordResetTemplateCode,
+                "PHONE_CHANGE_OLD", phoneChangeOldTemplateCode,
+                "PHONE_CHANGE_NEW", phoneChangeNewTemplateCode);
         this.schemeName = schemeName;
         this.validSeconds = codeMinutes * 60;
     }
 
     @Override public String name() { return "alibaba"; }
 
-    @Override public SendResult send(String phoneNational, String outId) {
+    @Override public SendResult send(String phoneNational, String outId, String purpose) {
         try {
             SendSmsVerifyCodeRequest request = new SendSmsVerifyCodeRequest()
                     .setPhoneNumber(phoneNational).setCountryCode("86").setSignName(signName)
-                    .setTemplateCode(templateCode).setTemplateParam("{\"code\":\"##code##\",\"min\":\"" + validSeconds / 60 + "\"}")
-                    .setOutId(outId).setSchemeName(schemeName)
+                    .setTemplateCode(templateCodes.get(purpose)).setTemplateParam("{\"code\":\"##code##\",\"min\":\"" + validSeconds / 60 + "\"}")
+                    .setOutId(outId)
                     .setCodeLength(6L).setCodeType(1L).setDuplicatePolicy(1L)
                     .setValidTime(validSeconds).setReturnVerifyCode(false);
+            if (!blank(schemeName)) request.setSchemeName(schemeName);
             var body = client.sendSmsVerifyCode(request).getBody();
             if (body == null || !Boolean.TRUE.equals(body.getSuccess()) || !"OK".equals(body.getCode())) {
                 throw new ApiException(HttpStatus.BAD_GATEWAY, "SMS_SEND_FAILED", "短信供应商未接受发送请求");
@@ -67,8 +77,8 @@ final class AlibabaSmsProvider implements SmsProvider {
     @Override public boolean verify(String phoneNational, String outId, String code) {
         try {
             CheckSmsVerifyCodeRequest request = new CheckSmsVerifyCodeRequest()
-                    .setPhoneNumber(phoneNational).setCountryCode("86").setOutId(outId)
-                    .setSchemeName(schemeName).setVerifyCode(code);
+                    .setPhoneNumber(phoneNational).setCountryCode("86").setOutId(outId).setVerifyCode(code);
+            if (!blank(schemeName)) request.setSchemeName(schemeName);
             var body = client.checkSmsVerifyCode(request).getBody();
             return body != null && Boolean.TRUE.equals(body.getSuccess()) && "OK".equals(body.getCode())
                     && body.getModel() != null && "PASS".equals(body.getModel().getVerifyResult())

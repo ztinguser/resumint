@@ -114,8 +114,8 @@ public class AuthService {
                 && !passwordEncoder.matches(currentPassword == null ? "" : currentPassword, user.passwordHash())) {
             throw invalidCredentials();
         }
-        sms.verify(oldAttemptId, normalizedOld, "PHONE_CHANGE", oldCode);
-        sms.verify(newAttemptId, normalizedNew, "PHONE_CHANGE", newCode);
+        sms.verify(oldAttemptId, normalizedOld, "PHONE_CHANGE_OLD", oldCode);
+        sms.verify(newAttemptId, normalizedNew, "PHONE_CHANGE_NEW", newCode);
         Instant now = clock.instant();
         try {
             repository.updatePhone(userId, normalizedNew, newPhoneHash, now);

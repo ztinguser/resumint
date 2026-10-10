@@ -84,7 +84,7 @@ class ResumeIntegrationTest {
     private static Cookie cookie(MvcResult result,String name){return Arrays.stream(result.getResponse().getCookies()).filter(value->name.equals(value.getName())).findFirst().orElseThrow();}
     @TestConfiguration static class FakeSmsConfiguration{
         @Bean @Primary SmsProvider fakeSmsProvider(){return new SmsProvider(){
-            public String name(){return "fake";}public SendResult send(String phone,String outId){return new SendResult("fake-"+outId);}public boolean verify(String phone,String outId,String code){return "123456".equals(code);}
+            public String name(){return "fake";}public SendResult send(String phone,String outId,String purpose){return new SendResult("fake-"+outId);}public boolean verify(String phone,String outId,String code){return "123456".equals(code);}
         };}
     }
     private static final String DOCUMENT="""

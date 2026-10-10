@@ -30,7 +30,10 @@ resumint:
     provider: ${SMS_PROVIDER:disabled}
     endpoint: ${ALIBABA_CLOUD_DYPNS_ENDPOINT:dypnsapi.aliyuncs.com}
     sign-name: ${ALIBABA_CLOUD_SMS_SIGN_NAME:}
-    template-code: ${ALIBABA_CLOUD_SMS_TEMPLATE_CODE:}
+    login-template-code: ${ALIBABA_CLOUD_SMS_LOGIN_TEMPLATE_CODE:}
+    password-reset-template-code: ${ALIBABA_CLOUD_SMS_PASSWORD_RESET_TEMPLATE_CODE:}
+    phone-change-old-template-code: ${ALIBABA_CLOUD_SMS_PHONE_CHANGE_OLD_TEMPLATE_CODE:}
+    phone-change-new-template-code: ${ALIBABA_CLOUD_SMS_PHONE_CHANGE_NEW_TEMPLATE_CODE:}
     scheme-name: ${ALIBABA_CLOUD_SMS_SCHEME_NAME:}
     code-minutes: ${SMS_CODE_MINUTES:5}
     cooldown: ${SMS_COOLDOWN:60s}

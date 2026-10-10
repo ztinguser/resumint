@@ -172,8 +172,8 @@ class AccountIntegrationTest {
                 .andExpect(status().isOk());
 
         ageSmsAttempts();
-        UUID oldAttempt = attempt(sendCode("13500135000", "PHONE_CHANGE").andExpect(status().isOk()).andReturn());
-        UUID newAttempt = attempt(sendCode("13300133000", "PHONE_CHANGE").andExpect(status().isOk()).andReturn());
+        UUID oldAttempt = attempt(sendCode("13500135000", "PHONE_CHANGE_OLD").andExpect(status().isOk()).andReturn());
+        UUID newAttempt = attempt(sendCode("13300133000", "PHONE_CHANGE_NEW").andExpect(status().isOk()).andReturn());
         String body = "{\"oldAttemptId\":\""+oldAttempt+"\",\"oldPhone\":\"13500135000\",\"oldCode\":\"123456\","+
                 "\"newAttemptId\":\""+newAttempt+"\",\"newPhone\":\"13300133000\",\"newCode\":\"123456\",\"currentPassword\":\"wrong123\"}";
         mvc.perform(put("/api/me/phone").cookie(session, csrf).header("X-XSRF-TOKEN", csrf.getValue())
@@ -218,7 +218,7 @@ class AccountIntegrationTest {
         @Bean @Primary SmsProvider fakeSmsProvider() {
             return new SmsProvider() {
                 @Override public String name() { return "fake"; }
-                @Override public SendResult send(String phoneNational, String outId) { return new SendResult("fake-request-"+outId); }
+                @Override public SendResult send(String phoneNational, String outId, String purpose) { return new SendResult("fake-request-"+outId); }
                 @Override public boolean verify(String phoneNational, String outId, String code) { return "123456".equals(code); }
             };
         }

@@ -10,7 +10,7 @@ public class LocalSmsTestConfiguration {
     @Bean SmsProvider localSmsTestProvider(){
         return new SmsProvider(){
             @Override public String name(){return "local-test";}
-            @Override public SendResult send(String phoneNational,String outId){return new SendResult("local-test-"+outId);}
+            @Override public SendResult send(String phoneNational,String outId,String purpose){return new SendResult("local-test-"+outId);}
             @Override public boolean verify(String phoneNational,String outId,String code){return "123456".equals(code);}
         };
     }

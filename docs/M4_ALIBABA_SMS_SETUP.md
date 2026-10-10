@@ -8,8 +8,9 @@
 ## 账号和资源
 
 1. 使用已实名认证且已开通号码认证服务的阿里云账号。
-2. 在号码认证控制台准备状态可用、互相匹配的短信签名、验证码模板和短信认证方案。
-   模板参数使用动态验证码，例如 `{"code":"##code##","min":"5"}`；不能使用静态验证码。
+2. 在号码认证控制台准备状态可用、互相匹配的短信签名和验证码模板。推荐的服务端短信认证
+   不需要另建认证方案；留空时 OpenAPI 使用“默认方案”。模板参数使用动态验证码，例如
+   `{"code":"##code##","min":"5"}`；不能使用静态验证码。
 3. 确认账户余额、套餐或其他计费资源足够，并单独准备一个获得授权的中国大陆测试手机号。
 4. 创建专用 RAM 用户，禁止使用主账号 AccessKey。只授予以下两个动作；这两个 OpenAPI
    不支持更细的资源级授权，因此资源为 `*`：
@@ -40,14 +41,18 @@ SMS_PROVIDER=alibaba
 ALIBABA_CLOUD_ACCESS_KEY_ID=<RAM AccessKey ID>
 ALIBABA_CLOUD_ACCESS_KEY_SECRET=<RAM AccessKey Secret>
 ALIBABA_CLOUD_SMS_SIGN_NAME=<已审核签名>
-ALIBABA_CLOUD_SMS_TEMPLATE_CODE=<已审核模板 Code>
-ALIBABA_CLOUD_SMS_SCHEME_NAME=<短信认证方案名称>
+ALIBABA_CLOUD_SMS_LOGIN_TEMPLATE_CODE=100001
+ALIBABA_CLOUD_SMS_PASSWORD_RESET_TEMPLATE_CODE=100003
+ALIBABA_CLOUD_SMS_PHONE_CHANGE_OLD_TEMPLATE_CODE=100005
+ALIBABA_CLOUD_SMS_PHONE_CHANGE_NEW_TEMPLATE_CODE=100004
+# 可选；推荐服务端接入可留空，发送与核验必须保持一致
+ALIBABA_CLOUD_SMS_SCHEME_NAME=
 AUTH_PHONE_LOOKUP_SECRET=<独立生成的高熵随机值>
 AUTH_COOKIE_SECURE=true
 ```
 
 `AUTH_PHONE_LOOKUP_SECRET` 不得与 AccessKey 或其他项目密钥复用。应用在
-`SMS_PROVIDER=alibaba` 时会拒绝缺少签名、模板、方案、AccessKey 或仍使用开发默认
+`SMS_PROVIDER=alibaba` 时会拒绝缺少签名、任一用途模板、AccessKey 或仍使用开发默认
 手机号索引密钥的配置。
 
 ## 联调证据

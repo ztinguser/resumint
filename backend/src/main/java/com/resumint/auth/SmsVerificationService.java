@@ -75,7 +75,7 @@ public class SmsVerificationService {
                     PhoneNumbers.mask(phone), sourceHash, ipHash, deviceHash, sessionHash, provider.name(), outId, "PENDING", 0, now, now.plus(attemptTtl));
             repository.insertAttempt(attempt);
             try {
-                SmsProvider.SendResult sent = provider.send(PhoneNumbers.national(phone), outId);
+                SmsProvider.SendResult sent = provider.send(PhoneNumbers.national(phone), outId, normalizedPurpose);
                 repository.sentAttempt(id, sent.providerRequestId());
                 return new SendReceipt(id, attempt.maskedPhone(), cooldown.toSeconds(), attempt.expiresAt());
             } catch (RuntimeException exception) {
@@ -117,7 +117,7 @@ public class SmsVerificationService {
     }
     private static String purpose(String value) {
         String result = value == null ? "" : value.trim().toUpperCase(java.util.Locale.ROOT);
-        if (!java.util.Set.of("LOGIN", "PASSWORD_RESET", "PHONE_CHANGE").contains(result))
+        if (!java.util.Set.of("LOGIN", "PASSWORD_RESET", "PHONE_CHANGE_OLD", "PHONE_CHANGE_NEW").contains(result))
             throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_SMS_PURPOSE", "短信验证码用途无效");
         return result;
     }
