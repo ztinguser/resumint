@@ -36,7 +36,7 @@ class MySqlContractIntegrationTest {
         var submitted=coordinator.submit("mysql-idempotency-key",new ExportSnapshot(document));var repeated=coordinator.submit("mysql-idempotency-key",new ExportSnapshot(document));
         assertThat(repeated.job().id()).isEqualTo(submitted.job().id());assertThat(repository.findById(submitted.job().id())).isPresent();
         assertThat(repository.claimNext("mysql-worker",Instant.now(),Duration.ofSeconds(60))).get().extracting(job->job.status()).isEqualTo(ExportStatus.RUNNING);
-        Integer resumes=jdbc.queryForObject("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name='resumes'",Integer.class);assertThat(resumes).isZero();
+        Integer resumes=jdbc.queryForObject("SELECT COUNT(*) FROM resumes",Integer.class);assertThat(resumes).isZero();
         String metadata=jdbc.queryForObject("SELECT CONCAT(idempotency_key,'|',credential_digest,'|',snapshot_ref) FROM export_jobs WHERE id=?",String.class,submitted.job().id().toString());assertThat(metadata).doesNotContain("MySQL 队列","guest@example.com");
     }
 }

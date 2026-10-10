@@ -1,0 +1,167 @@
+package com.resumint.auth;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import jakarta.servlet.http.Cookie;
+import java.time.Instant;
+import java.util.Arrays;
+import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Primary;
+import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+
+@SpringBootTest(properties={
+        "resumint.sms.provider=fake", "resumint.sms.cooldown=60s", "resumint.sms.phone-hour-limit=5",
+        "resumint.auth.session-ttl=12h", "resumint.export.worker-enabled=false"
+})
+@AutoConfigureMockMvc
+@EnabledIfSystemProperty(named="resumint.mysql.it",matches="true")
+class AccountIntegrationTest {
+    @DynamicPropertySource static void database(DynamicPropertyRegistry registry) {
+        registry.add("spring.datasource.url",()->"jdbc:mysql://127.0.0.1:33306/resumint?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC");
+        registry.add("spring.datasource.username",()->"resumint"); registry.add("spring.datasource.password",()->"resumint");
+    }
+    @Autowired MockMvc mvc;
+    @Autowired JdbcTemplate jdbc;
+    @Autowired ObjectMapper json;
+    @Autowired AuthRepository repository;
+    @Autowired SmsVerificationService sms;
+
+    @BeforeEach void clean() {
+        jdbc.update("DELETE FROM template_favorites"); jdbc.update("DELETE FROM resumes"); jdbc.update("DELETE FROM trusted_devices");
+        jdbc.update("DELETE FROM auth_sessions"); jdbc.update("DELETE FROM sms_verification_attempts"); jdbc.update("DELETE FROM users");
+    }
+
+    @Test void smsRegistrationIsOneTimeRateLimitedAndNeverStoresCode() throws Exception {
+        MvcResult sent = sendCode("13800138000", "LOGIN").andExpect(status().isOk()).andReturn();
+        UUID attemptId = UUID.fromString(json.readTree(sent.getResponse().getContentAsString()).get("attemptId").asText());
+        sendCode("13800138000", "LOGIN").andExpect(status().isTooManyRequests()).andExpect(jsonPath("$.code").value("SMS_RATE_LIMITED"));
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='sms_verification_attempts' AND column_name IN ('verify_code','code','code_hash','code_digest')", Integer.class)).isZero();
+
+        mvc.perform(post("/api/auth/sms-login").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"attemptId\":\""+attemptId+"\",\"phone\":\"13800138000\",\"code\":\"000000\"}"))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("SMS_CODE_INVALID"));
+        MvcResult login = mvc.perform(post("/api/auth/sms-login").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"attemptId\":\""+attemptId+"\",\"phone\":\"+86 13800138000\",\"code\":\"123456\"}"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.registered").value(true)).andReturn();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM users WHERE phone_e164='+8613800138000'", Integer.class)).isOne();
+        assertThat(jdbc.queryForObject("SELECT status FROM sms_verification_attempts WHERE id=?", String.class, attemptId.toString())).isEqualTo("CONSUMED");
+        mvc.perform(post("/api/auth/sms-login").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"attemptId\":\""+attemptId+"\",\"phone\":\"13800138000\",\"code\":\"123456\"}"))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("SMS_ATTEMPT_USED"));
+
+        Cookie session = cookie(login, AuthSessionFilter.SESSION_COOKIE);
+        Cookie csrf = cookie(login, AuthSessionFilter.CSRF_COOKIE);
+        mvc.perform(get("/api/me").cookie(session)).andExpect(status().isOk()).andExpect(jsonPath("$.maskedPhone").value("+86 138****8000"));
+        mvc.perform(put("/api/me/password").cookie(session, csrf).header("X-XSRF-TOKEN", csrf.getValue())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"newPassword\":\"secure123\"}"))
+                .andExpect(status().isOk());
+        mvc.perform(post("/api/auth/password-login").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"phone\":\"13800138000\",\"password\":\"secure123\"}"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.passwordSet").value(true));
+    }
+
+    @Test void csrfAndExpiredSessionsAreRejected() throws Exception {
+        MvcResult login = register("13900139000");
+        Cookie session = cookie(login, AuthSessionFilter.SESSION_COOKIE);
+        mvc.perform(put("/api/me/avatar").cookie(session).contentType(MediaType.APPLICATION_JSON).content("{\"avatar\":\"MALE\"}"))
+                .andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("CSRF_REJECTED"));
+        jdbc.update("UPDATE auth_sessions SET expires_at=?", java.sql.Timestamp.from(Instant.now().minusSeconds(1)));
+        mvc.perform(get("/api/me").cookie(session)).andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("SESSION_EXPIRED"));
+    }
+
+    @Test void passwordResetAndSmsTakeoverRequireTrustedDevice() throws Exception {
+        MvcResult registration = register("13600136000");
+        Cookie session = cookie(registration, AuthSessionFilter.SESSION_COOKIE);
+        Cookie csrf = cookie(registration, AuthSessionFilter.CSRF_COOKIE);
+        Cookie device = cookie(registration, AuthSessionFilter.DEVICE_COOKIE);
+        mvc.perform(put("/api/me/password").cookie(session, csrf).header("X-XSRF-TOKEN", csrf.getValue())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"newPassword\":\"original123\"}"))
+                .andExpect(status().isOk());
+
+        ageSmsAttempts();
+        UUID riskyLogin = attempt(sendCode("13600136000", "LOGIN").andExpect(status().isOk()).andReturn());
+        mvc.perform(post("/api/auth/sms-login").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"attemptId\":\""+riskyLogin+"\",\"phone\":\"13600136000\",\"code\":\"123456\"}"))
+                .andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("PASSWORD_REQUIRED"));
+        assertThat(jdbc.queryForObject("SELECT status FROM sms_verification_attempts WHERE id=?", String.class, riskyLogin.toString())).isEqualTo("CONSUMED");
+
+        ageSmsAttempts();
+        UUID resetAttempt = attempt(sendCode("13600136000", "PASSWORD_RESET").andExpect(status().isOk()).andReturn());
+        mvc.perform(post("/api/auth/password-reset").cookie(device).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"attemptId\":\""+resetAttempt+"\",\"phone\":\"13600136000\",\"code\":\"123456\",\"newPassword\":\"changed456\"}"))
+                .andExpect(status().isOk());
+        mvc.perform(post("/api/auth/password-login").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"phone\":\"13600136000\",\"password\":\"original123\"}"))
+                .andExpect(status().isUnauthorized());
+        mvc.perform(post("/api/auth/password-login").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"phone\":\"13600136000\",\"password\":\"changed456\"}"))
+                .andExpect(status().isOk());
+    }
+
+    @Test void databaseUniqueConstraintSurvivesConcurrentRegistration() throws Exception {
+        String phone = PhoneNumbers.normalize("13700137000");
+        String hash = sms.phoneHash(phone);
+        CountDownLatch ready = new CountDownLatch(2); CountDownLatch go = new CountDownLatch(1);
+        try (var pool = Executors.newFixedThreadPool(2)) {
+            var first = pool.submit(() -> { ready.countDown(); go.await(); return repository.createUser(phone, hash, Instant.now()).id(); });
+            var second = pool.submit(() -> { ready.countDown(); go.await(); return repository.createUser(phone, hash, Instant.now()).id(); });
+            ready.await(); go.countDown();
+            assertThat(first.get()).isEqualTo(second.get());
+        }
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM users WHERE phone_e164=?", Integer.class, phone)).isOne();
+    }
+
+    private org.springframework.test.web.servlet.ResultActions sendCode(String phone, String purpose) throws Exception {
+        return mvc.perform(post("/api/auth/sms-code").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"phone\":\""+phone+"\",\"purpose\":\""+purpose+"\"}"));
+    }
+    private MvcResult register(String phone) throws Exception {
+        JsonNode sent = json.readTree(sendCode(phone,"LOGIN").andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        return mvc.perform(post("/api/auth/sms-login").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"attemptId\":\""+sent.get("attemptId").asText()+"\",\"phone\":\""+phone+"\",\"code\":\"123456\"}"))
+                .andExpect(status().isOk()).andReturn();
+    }
+    private UUID attempt(MvcResult result) throws Exception {
+        return UUID.fromString(json.readTree(result.getResponse().getContentAsString()).get("attemptId").asText());
+    }
+    private void ageSmsAttempts() {
+        jdbc.update("UPDATE sms_verification_attempts SET created_at=DATE_SUB(created_at, INTERVAL 2 MINUTE)");
+    }
+    private static Cookie cookie(MvcResult result, String name) {
+        return Arrays.stream(result.getResponse().getCookies()).filter(value -> name.equals(value.getName())).findFirst().orElseThrow();
+    }
+
+    @TestConfiguration static class FakeSmsConfiguration {
+        @Bean @Primary SmsProvider fakeSmsProvider() {
+            return new SmsProvider() {
+                @Override public String name() { return "fake"; }
+                @Override public SendResult send(String phoneNational, String outId) { return new SendResult("fake-request-"+outId); }
+                @Override public boolean verify(String phoneNational, String outId, String code) { return "123456".equals(code); }
+            };
+        }
+    }
+
+}

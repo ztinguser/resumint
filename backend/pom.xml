@@ -18,6 +18,7 @@
         <pdfbox.version>3.0.8</pdfbox.version>
         <mybatis.version>4.0.0</mybatis.version>
         <springdoc.version>3.1.1</springdoc.version>
+        <aliyun.dypnsapi.version>2.0.0</aliyun.dypnsapi.version>
     </properties>
     <dependencies>
         <dependency>
@@ -27,6 +28,15 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.aliyun</groupId>
+            <artifactId>dypnsapi20170525</artifactId>
+            <version>${aliyun.dypnsapi.version}</version>
         </dependency>
         <dependency>
             <groupId>org.mybatis.spring.boot</groupId>
@@ -65,6 +75,11 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webmvc-test</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>
