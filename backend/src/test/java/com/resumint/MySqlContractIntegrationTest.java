@@ -27,7 +27,7 @@ class MySqlContractIntegrationTest {
         registry.add("spring.datasource.username",()->"resumint"); registry.add("spring.datasource.password",()->"resumint");
     }
     @Autowired TemplateMapper templates; @Autowired ExportCoordinator coordinator; @Autowired ExportJobRepository repository; @Autowired JdbcTemplate jdbc; @Autowired ObjectMapper objectMapper;
-    @BeforeEach void clean(){jdbc.update("DELETE FROM export_jobs");}
+    @BeforeEach void clean(){jdbc.update("DELETE FROM export_jobs");jdbc.update("DELETE FROM resumes");}
     @Test void migrationPublishesImmutableBenchmarkTemplate(){var rows=templates.findPublic();assertThat(rows).hasSize(1);assertThat(rows.getFirst().id()).isEqualTo("benchmark-template");assertThat(rows.getFirst().version()).isEqualTo(1);assertThat(rows.getFirst().configJson()).contains("editableParameters");}
     @Test void mysqlQueuePersistsLeaseIdempotencyAndGuestMetadataWithoutDrafts() throws Exception {
         var document=objectMapper.readTree("""
