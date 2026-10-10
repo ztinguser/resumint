@@ -30,8 +30,9 @@ export function GuestWorkbench({templateId,initialDraftId}:{templateId:string;in
   const [dragDocument, setDragDocument] = useState<ResumeDocument | null>(null);
   const [user,setUser]=useState<CurrentUser|null>(null);
   const [loginOpen,setLoginOpen]=useState(false);
-  const [draftId,setDraftId]=useState<string|undefined>(initialDraftId);
-  const [serverRevision,setServerRevision]=useState<number|null>(null);
+  const draftIdRef=useRef<string|undefined>(initialDraftId);
+  const serverRevisionRef=useRef<number|null>(null);
+  const saveInFlightRef=useRef(false);
   const [documentTitle,setDocumentTitle]=useState("未命名简历");
   const [saveState,setSaveState]=useState<SaveState>(initialSaveState);
   const [conflict,setConflict]=useState<Draft|null>(null);
@@ -50,7 +51,7 @@ export function GuestWorkbench({templateId,initialDraftId}:{templateId:string;in
   }, [saveState.status]);
 
   useEffect(()=>{let active=true;currentUser().then(async(value)=>{if(!active)return;setUser(value);
-    if(value&&initialDraftId){try{const draft=await apiFetch<Draft>(`/api/resumes/${initialDraftId}`);if(!active)return;dispatch({type:"replace",document:draft.document});setDocumentTitle(draft.title);setDraftId(draft.id);setServerRevision(draft.revision);setSaveState(loadedSaved());setTemplateReady(true);}catch(error){if(active)setNotice(error instanceof Error?error.message:"草稿加载失败");}}
+    if(value&&initialDraftId){try{const draft=await apiFetch<Draft>(`/api/resumes/${initialDraftId}`);if(!active)return;dispatch({type:"replace",document:draft.document});setDocumentTitle(draft.title);draftIdRef.current=draft.id;serverRevisionRef.current=draft.revision;setSaveState(loadedSaved());setTemplateReady(true);}catch(error){if(active)setNotice(error instanceof Error?error.message:"草稿加载失败");}}
   }).catch(()=>{});return()=>{active=false;};},[initialDraftId]);
 
   useEffect(() => {
@@ -91,25 +92,26 @@ export function GuestWorkbench({templateId,initialDraftId}:{templateId:string;in
 
   const createDraft=async(snapshot:ResumeDocument,title=documentTitle)=>{
     const saved=await apiFetch<Draft>("/api/resumes",{method:"POST",body:JSON.stringify({title,templateId:snapshot.template.id,templateVersion:snapshot.template.version,schemaVersion:snapshot.schemaVersion,document:snapshot})});
-    setDraftId(saved.id);setServerRevision(saved.revision);setDocumentTitle(saved.title);return saved;
+    draftIdRef.current=saved.id;serverRevisionRef.current=saved.revision;setDocumentTitle(saved.title);return saved;
   };
   const saveDraft=async(forceNew=false)=>{
-    if(!user){setLoginOpen(true);return false;}const snapshot=cloneDocument(history.present);const submittedRevision=saveState.localRevision;
+    if(!user){setLoginOpen(true);return false;}if(saveInFlightRef.current)return false;saveInFlightRef.current=true;const snapshot=cloneDocument(history.present);const submittedRevision=saveState.localRevision;
     setNotice(null);setSaveState(current=>saveStarted(current));
     try{
-      const saved=forceNew||!draftId?await createDraft(snapshot,forceNew?`${documentTitle}（冲突副本）`:documentTitle):await apiFetch<Draft>(`/api/resumes/${draftId}`,{method:"PUT",body:JSON.stringify({baseRevision:serverRevision,title:documentTitle,document:snapshot})});
-      setDraftId(saved.id);setServerRevision(saved.revision);setConflict(null);setCompareConflict(false);
+      const currentDraftId=draftIdRef.current;const currentServerRevision=serverRevisionRef.current;
+      const saved=forceNew||!currentDraftId?await createDraft(snapshot,forceNew?`${documentTitle}（冲突副本）`:documentTitle):await apiFetch<Draft>(`/api/resumes/${currentDraftId}`,{method:"PUT",body:JSON.stringify({baseRevision:currentServerRevision,title:documentTitle,document:snapshot})});
+      draftIdRef.current=saved.id;serverRevisionRef.current=saved.revision;setConflict(null);setCompareConflict(false);
       setSaveState(current=>saveSucceeded({...current,savingRevision:submittedRevision}));return true;
     }catch(error){
       if(error instanceof ApiError&&error.status===401){setUser(null);setLoginOpen(true);setNotice("会话已过期，当前编辑内容仍在；重新登录后请再次手动保存。");}
-      else if(error instanceof ApiError&&error.status===409&&draftId){try{setConflict(await apiFetch<Draft>(`/api/resumes/${draftId}`));}catch{setNotice("检测到版本冲突，但暂时无法读取服务器版本。");}}
+      else if(error instanceof ApiError&&error.status===409&&draftIdRef.current){try{setConflict(await apiFetch<Draft>(`/api/resumes/${draftIdRef.current}`));}catch{setNotice("检测到版本冲突，但暂时无法读取服务器版本。");}}
       else setNotice(error instanceof Error?error.message:"保存失败，请重试");
       setSaveState(current=>saveFailed(current));return false;
-    }
+    }finally{saveInFlightRef.current=false;}
   };
-  const reloadConflict=()=>{if(!conflict)return;dispatch({type:"replace",document:conflict.document});setDocumentTitle(conflict.title);setServerRevision(conflict.revision);setSaveState(current=>loadedSaved(current.localRevision));setConflict(null);setCompareConflict(false);};
+  const reloadConflict=()=>{if(!conflict)return;dispatch({type:"replace",document:conflict.document});setDocumentTitle(conflict.title);serverRevisionRef.current=conflict.revision;setSaveState(current=>loadedSaved(current.localRevision));setConflict(null);setCompareConflict(false);};
   const closeLogin=()=>{sessionStorage.setItem("resumint-login-dismissed","1");setLoginOpen(false);};
-  const performLogout=async()=>{try{await apiFetch<void>("/api/auth/logout",{method:"POST"});}finally{setUser(null);setDraftId(undefined);setServerRevision(null);setSaveState(initialSaveState);setLogoutPrompt(false);}};
+  const performLogout=async()=>{try{await apiFetch<void>("/api/auth/logout",{method:"POST"});}finally{setUser(null);draftIdRef.current=undefined;serverRevisionRef.current=null;setSaveState(initialSaveState);setLogoutPrompt(false);}};
   const requestLogout=()=>{if(["unsaved","dirty","failed","saving"].includes(saveState.status))setLogoutPrompt(true);else void performLogout();};
 
   const emailError=/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(document.profile.email)?"":"请输入有效邮箱地址";
