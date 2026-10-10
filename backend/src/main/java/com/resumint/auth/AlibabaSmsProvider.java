@@ -3,6 +3,7 @@ package com.resumint.auth;
 import com.aliyun.dypnsapi20170525.Client;
 import com.aliyun.dypnsapi20170525.models.CheckSmsVerifyCodeRequest;
 import com.aliyun.dypnsapi20170525.models.SendSmsVerifyCodeRequest;
+import com.aliyun.tea.TeaException;
 import com.aliyun.teaopenapi.models.Config;
 import com.resumint.web.ApiException;
 import org.springframework.beans.factory.annotation.Value;
@@ -80,13 +81,28 @@ final class AlibabaSmsProvider implements SmsProvider {
                     .setPhoneNumber(phoneNational).setCountryCode("86").setOutId(outId).setVerifyCode(code);
             if (!blank(schemeName)) request.setSchemeName(schemeName);
             var body = client.checkSmsVerifyCode(request).getBody();
-            return body != null && Boolean.TRUE.equals(body.getSuccess()) && "OK".equals(body.getCode())
-                    && body.getModel() != null && "PASS".equals(body.getModel().getVerifyResult())
+            if (body == null) throw providerUnavailable();
+            if (!Boolean.TRUE.equals(body.getSuccess()) || !"OK".equals(body.getCode())) {
+                if (verificationRejectedCode(body.getCode())) return false;
+                throw providerUnavailable();
+            }
+            return body.getModel() != null && "PASS".equals(body.getModel().getVerifyResult())
                     && outId.equals(body.getModel().getOutId());
+        } catch (TeaException exception) {
+            if (verificationRejectedCode(exception.getCode())) return false;
+            throw providerUnavailable();
+        } catch (ApiException exception) {
+            throw exception;
         } catch (Exception exception) {
-            throw new ApiException(HttpStatus.BAD_GATEWAY, "SMS_PROVIDER_UNAVAILABLE", "短信供应商暂时不可用");
+            throw providerUnavailable();
         }
     }
 
+    static boolean verificationRejectedCode(String code) {
+        return code != null && ("isv.ValidateFail".equalsIgnoreCase(code) || "VALIDATE_FAIL".equalsIgnoreCase(code));
+    }
+    private static ApiException providerUnavailable() {
+        return new ApiException(HttpStatus.BAD_GATEWAY, "SMS_PROVIDER_UNAVAILABLE", "短信供应商暂时不可用");
+    }
     private static boolean blank(String value) { return value == null || value.isBlank(); }
 }

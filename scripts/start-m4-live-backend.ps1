@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [string]$DatabaseUrl = "jdbc:mysql://127.0.0.1:33306/resumint?createDatabaseIfNotExist=true&useUnicode=true&characterEncoding=utf8&serverTimezone=UTC",
+    [string]$DatabaseUrl = "jdbc:mysql://127.0.0.1:33306/resumint_m4_live?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC",
     [string]$DatabaseUsername = "resumint",
     [string]$DatabasePassword = "resumint"
 )
@@ -10,7 +10,11 @@ $backendDirectory = Join-Path (Split-Path -Parent $PSScriptRoot) "backend"
 
 function Read-SecretText([string]$Prompt) {
     $secure = Read-Host $Prompt -AsSecureString
-    $pointer = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secure)
+    return Convert-SecretToText $secure
+}
+
+function Convert-SecretToText([Security.SecureString]$Secure) {
+    $pointer = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($Secure)
     try {
         return [Runtime.InteropServices.Marshal]::PtrToStringBSTR($pointer)
     }
@@ -33,13 +37,24 @@ if ([string]::IsNullOrWhiteSpace($accessKeyId) -or
     throw "AccessKey ID, AccessKey Secret, and SMS signature name are required."
 }
 
-$lookupBytes = [byte[]]::new(32)
-$random = [Security.Cryptography.RandomNumberGenerator]::Create()
-try {
-    $random.GetBytes($lookupBytes)
+$stateDirectory = Join-Path $env:LOCALAPPDATA "Resumint"
+$lookupSecretPath = Join-Path $stateDirectory "m4-phone-lookup-secret.xml"
+if (Test-Path -LiteralPath $lookupSecretPath) {
+    $lookupSecret = Convert-SecretToText (Import-Clixml -LiteralPath $lookupSecretPath)
 }
-finally {
-    $random.Dispose()
+else {
+    $lookupBytes = [byte[]]::new(32)
+    $random = [Security.Cryptography.RandomNumberGenerator]::Create()
+    try {
+        $random.GetBytes($lookupBytes)
+        $lookupSecret = ([BitConverter]::ToString($lookupBytes)).Replace("-", "").ToLowerInvariant()
+    }
+    finally {
+        $random.Dispose()
+        [Array]::Clear($lookupBytes, 0, $lookupBytes.Length)
+    }
+    New-Item -ItemType Directory -Path $stateDirectory -Force | Out-Null
+    ConvertTo-SecureString $lookupSecret -AsPlainText -Force | Export-Clixml -LiteralPath $lookupSecretPath
 }
 
 $secretNames = @(
@@ -58,7 +73,7 @@ try {
     $env:ALIBABA_CLOUD_SMS_PHONE_CHANGE_OLD_TEMPLATE_CODE = "100005"
     $env:ALIBABA_CLOUD_SMS_PHONE_CHANGE_NEW_TEMPLATE_CODE = "100004"
     Remove-Item Env:ALIBABA_CLOUD_SMS_SCHEME_NAME -ErrorAction SilentlyContinue
-    $env:AUTH_PHONE_LOOKUP_SECRET = ([BitConverter]::ToString($lookupBytes)).Replace("-", "").ToLowerInvariant()
+    $env:AUTH_PHONE_LOOKUP_SECRET = $lookupSecret
     $env:AUTH_COOKIE_SECURE = "false"
     $env:DB_URL = $DatabaseUrl
     $env:DB_USERNAME = $DatabaseUsername
@@ -78,7 +93,7 @@ try {
 finally {
     $accessKeyId = $null
     $accessKeySecret = $null
-    [Array]::Clear($lookupBytes, 0, $lookupBytes.Length)
+    $lookupSecret = $null
     foreach ($name in $secretNames) {
         Remove-Item "Env:$name" -ErrorAction SilentlyContinue
     }
