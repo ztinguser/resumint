@@ -22,6 +22,8 @@ public class SmsVerificationService {
     private final int phoneHourLimit;
     private final int phoneDayLimit;
     private final int sourceHourLimit;
+    private final int deviceHourLimit;
+    private final int sessionHourLimit;
     private final int globalMinuteLimit;
     private final int verifyFailureLimit;
 
@@ -32,20 +34,26 @@ public class SmsVerificationService {
             @Value("${resumint.sms.phone-hour-limit}") int phoneHourLimit,
             @Value("${resumint.sms.phone-day-limit}") int phoneDayLimit,
             @Value("${resumint.sms.source-hour-limit}") int sourceHourLimit,
+            @Value("${resumint.sms.device-hour-limit}") int deviceHourLimit,
+            @Value("${resumint.sms.session-hour-limit}") int sessionHourLimit,
             @Value("${resumint.sms.global-minute-limit}") int globalMinuteLimit,
             @Value("${resumint.sms.verify-failure-limit}") int verifyFailureLimit) {
         this.repository = repository; this.provider = provider; this.clock = clock; this.lookupSecret = lookupSecret;
         this.cooldown = cooldown; this.attemptTtl = attemptTtl; this.phoneHourLimit = phoneHourLimit;
         this.phoneDayLimit = phoneDayLimit; this.sourceHourLimit = sourceHourLimit;
+        this.deviceHourLimit = deviceHourLimit; this.sessionHourLimit = sessionHourLimit;
         this.globalMinuteLimit = globalMinuteLimit; this.verifyFailureLimit = verifyFailureLimit;
     }
 
     @Transactional(noRollbackFor=ApiException.class)
-    SendReceipt send(String rawPhone, String purpose, String source) {
+    SendReceipt send(String rawPhone, String purpose, RateLimitSources sources) {
         String phone = PhoneNumbers.normalize(rawPhone);
         String normalizedPurpose = purpose(purpose);
         String phoneHash = phoneHash(phone);
-        String sourceHash = SecretDigests.hmac(lookupSecret, source == null ? "unknown" : source);
+        String ipHash = hashSource(sources == null ? null : sources.ip());
+        String deviceHash = hashSource(sources == null ? null : sources.deviceToken());
+        String sessionHash = hashSource(sources == null ? null : sources.sessionToken());
+        String sourceHash = ipHash;
         if (!repository.acquireSmsLock(phoneHash)) throw rateLimited("发送请求过于频繁，请稍后再试", 2);
         try {
             Instant now = clock.instant();
@@ -56,13 +64,15 @@ public class SmsVerificationService {
             if (repository.sentForPhoneSince(phoneHash, now.minus(Duration.ofHours(1))) >= phoneHourLimit
                     || repository.sentForPhoneSince(phoneHash, now.minus(Duration.ofDays(1))) >= phoneDayLimit
                     || repository.sentForSourceSince(sourceHash, now.minus(Duration.ofHours(1))) >= sourceHourLimit
+                    || repository.sentForDeviceSince(deviceHash, now.minus(Duration.ofHours(1))) >= deviceHourLimit
+                    || repository.sentForSessionSince(sessionHash, now.minus(Duration.ofHours(1))) >= sessionHourLimit
                     || repository.sentSince(now.minus(Duration.ofMinutes(1))) >= globalMinuteLimit) {
                 throw rateLimited("验证码发送已达到限额，请稍后再试", cooldown.toSeconds());
             }
             UUID id = UUID.randomUUID();
             String outId = id.toString();
             AuthRepository.AttemptRow attempt = new AuthRepository.AttemptRow(id, normalizedPurpose, phoneHash,
-                    PhoneNumbers.mask(phone), sourceHash, provider.name(), outId, "PENDING", 0, now, now.plus(attemptTtl));
+                    PhoneNumbers.mask(phone), sourceHash, ipHash, deviceHash, sessionHash, provider.name(), outId, "PENDING", 0, now, now.plus(attemptTtl));
             repository.insertAttempt(attempt);
             try {
                 SmsProvider.SendResult sent = provider.send(PhoneNumbers.national(phone), outId);
@@ -96,6 +106,7 @@ public class SmsVerificationService {
     }
 
     String phoneHash(String phone) { return SecretDigests.hmac(lookupSecret, phone); }
+    private String hashSource(String source) { return source == null || source.isBlank() ? null : SecretDigests.hmac(lookupSecret, source); }
 
     private ApiException rejected(AuthRepository.AttemptRow attempt) {
         int failures = attempt.failureCount() + 1;
@@ -115,4 +126,5 @@ public class SmsVerificationService {
     }
     record SendReceipt(UUID attemptId, String maskedPhone, long retryAfterSeconds, Instant expiresAt) { }
     record VerifiedPhone(String phone, String phoneHash, String maskedPhone) { }
+    record RateLimitSources(String ip, String deviceToken, String sessionToken) { }
 }

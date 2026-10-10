@@ -3,6 +3,7 @@ package com.resumint.auth;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -59,10 +60,18 @@ class ResumeIntegrationTest {
         mvc.perform(get("/api/resumes/"+id).cookie(session)).andExpect(status().isOk()).andExpect(jsonPath("$.title").value("服务器版本"))
                 .andExpect(jsonPath("$.document.profile.fullName").value("版本 A"));
 
+        mvc.perform(patch("/api/resumes/"+id+"/title").cookie(session,csrf).header("X-XSRF-TOKEN",csrf.getValue())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"baseRevision\":2,\"title\":\"重命名草稿\"}"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.title").value("重命名草稿"))
+                .andExpect(jsonPath("$.revision").value(3));
+
         mvc.perform(put("/api/templates/benchmark-template/favorite").cookie(session,csrf).header("X-XSRF-TOKEN",csrf.getValue())).andExpect(status().isOk());
         mvc.perform(put("/api/templates/benchmark-template/favorite").cookie(session,csrf).header("X-XSRF-TOKEN",csrf.getValue())).andExpect(status().isOk());
         mvc.perform(get("/api/templates/favorites").cookie(session)).andExpect(status().isOk()).andExpect(jsonPath("$[0]").value("benchmark-template"));
         mvc.perform(delete("/api/templates/benchmark-template/favorite").cookie(session,csrf).header("X-XSRF-TOKEN",csrf.getValue())).andExpect(status().isOk());
+        mvc.perform(delete("/api/resumes/"+id+"?baseRevision=3").cookie(session,csrf).header("X-XSRF-TOKEN",csrf.getValue()))
+                .andExpect(status().isNoContent());
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM resumes",Integer.class)).isZero();
     }
 
     private MvcResult register(String phone)throws Exception{

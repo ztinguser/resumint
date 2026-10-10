@@ -6,6 +6,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.UUID;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -91,6 +92,38 @@ public class AuthService {
         if (!java.util.Set.of("DEFAULT", "MALE", "FEMALE").contains(value))
             throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_AVATAR", "头像选项无效");
         repository.updateAvatar(userId, value, clock.instant());
+    }
+
+    @Transactional(noRollbackFor=ApiException.class)
+    void changePhone(UUID userId, UUID currentSessionId, UUID oldAttemptId, String oldPhone, String oldCode,
+            UUID newAttemptId, String newPhone, String newCode, String currentPassword) {
+        AuthRepository.UserRow user = requireUser(userId);
+        String normalizedOld = PhoneNumbers.normalize(oldPhone);
+        String normalizedNew = PhoneNumbers.normalize(newPhone);
+        if (!user.phone().equals(normalizedOld)) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "OLD_PHONE_MISMATCH", "旧手机号与当前账号不一致");
+        }
+        if (normalizedOld.equals(normalizedNew)) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "PHONE_UNCHANGED", "新手机号不能与当前手机号相同");
+        }
+        String newPhoneHash = sms.phoneHash(normalizedNew);
+        if (repository.userByPhoneHash(newPhoneHash).isPresent()) {
+            throw new ApiException(HttpStatus.CONFLICT, "PHONE_ALREADY_REGISTERED", "该手机号已绑定其他账号");
+        }
+        if (user.passwordHash() != null
+                && !passwordEncoder.matches(currentPassword == null ? "" : currentPassword, user.passwordHash())) {
+            throw invalidCredentials();
+        }
+        sms.verify(oldAttemptId, normalizedOld, "PHONE_CHANGE", oldCode);
+        sms.verify(newAttemptId, normalizedNew, "PHONE_CHANGE", newCode);
+        Instant now = clock.instant();
+        try {
+            repository.updatePhone(userId, normalizedNew, newPhoneHash, now);
+        } catch (DuplicateKeyException duplicate) {
+            throw new ApiException(HttpStatus.CONFLICT, "PHONE_ALREADY_REGISTERED", "该手机号已绑定其他账号");
+        }
+        repository.revokeOtherSessions(userId, currentSessionId, now);
+        repository.revokeTrustedDevices(userId, now);
     }
 
     AuthRepository.UserRow requireUser(UUID userId) {

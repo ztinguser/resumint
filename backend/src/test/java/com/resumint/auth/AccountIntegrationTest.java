@@ -92,6 +92,16 @@ class AccountIntegrationTest {
                 .andExpect(jsonPath("$.code").value("SESSION_EXPIRED"));
     }
 
+    @Test void expiredSmsCodeCannotRegister() throws Exception {
+        UUID attemptId = attempt(sendCode("15100151000", "LOGIN").andExpect(status().isOk()).andReturn());
+        jdbc.update("UPDATE sms_verification_attempts SET expires_at=? WHERE id=?",
+                java.sql.Timestamp.from(Instant.now().minusSeconds(1)), attemptId.toString());
+        mvc.perform(post("/api/auth/sms-login").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"attemptId\":\""+attemptId+"\",\"phone\":\"15100151000\",\"code\":\"123456\"}"))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("SMS_CODE_EXPIRED"));
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM users", Integer.class)).isZero();
+    }
+
     @Test void passwordResetAndSmsTakeoverRequireTrustedDevice() throws Exception {
         MvcResult registration = register("13600136000");
         Cookie session = cookie(registration, AuthSessionFilter.SESSION_COOKIE);
@@ -132,6 +142,56 @@ class AccountIntegrationTest {
             assertThat(first.get()).isEqualTo(second.get());
         }
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM users WHERE phone_e164=?", Integer.class, phone)).isOne();
+    }
+
+    @Test void authenticatedSmsRequestsAreHashedAndLimitedByDeviceAndSession() throws Exception {
+        MvcResult registration = register("13000130000");
+        Cookie session = cookie(registration, AuthSessionFilter.SESSION_COOKIE);
+        Cookie device = cookie(registration, AuthSessionFilter.DEVICE_COOKIE);
+        Cookie csrf = cookie(registration, AuthSessionFilter.CSRF_COOKIE);
+        for (int index=0; index<10; index++) {
+            String phone = String.format("1391000%04d", index);
+            mvc.perform(post("/api/auth/sms-code").cookie(session, device, csrf).header("X-XSRF-TOKEN", csrf.getValue()).contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"phone\":\""+phone+"\",\"purpose\":\"PASSWORD_RESET\"}"))
+                    .andExpect(status().isOk());
+        }
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM sms_verification_attempts WHERE device_hash IS NOT NULL AND session_hash IS NOT NULL", Integer.class)).isEqualTo(10);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM sms_verification_attempts WHERE device_hash=? OR session_hash=?", Integer.class,
+                device.getValue(), session.getValue())).isZero();
+        mvc.perform(post("/api/auth/sms-code").cookie(session, device, csrf).header("X-XSRF-TOKEN", csrf.getValue()).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"phone\":\"13910000010\",\"purpose\":\"PASSWORD_RESET\"}"))
+                .andExpect(status().isTooManyRequests()).andExpect(jsonPath("$.code").value("SMS_RATE_LIMITED"));
+    }
+
+    @Test void phoneChangeRequiresPasswordAndBothOldAndNewPhoneCodes() throws Exception {
+        MvcResult registration = register("13500135000");
+        Cookie session = cookie(registration, AuthSessionFilter.SESSION_COOKIE);
+        Cookie csrf = cookie(registration, AuthSessionFilter.CSRF_COOKIE);
+        mvc.perform(put("/api/me/password").cookie(session, csrf).header("X-XSRF-TOKEN", csrf.getValue())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"newPassword\":\"original123\"}"))
+                .andExpect(status().isOk());
+
+        ageSmsAttempts();
+        UUID oldAttempt = attempt(sendCode("13500135000", "PHONE_CHANGE").andExpect(status().isOk()).andReturn());
+        UUID newAttempt = attempt(sendCode("13300133000", "PHONE_CHANGE").andExpect(status().isOk()).andReturn());
+        String body = "{\"oldAttemptId\":\""+oldAttempt+"\",\"oldPhone\":\"13500135000\",\"oldCode\":\"123456\","+
+                "\"newAttemptId\":\""+newAttempt+"\",\"newPhone\":\"13300133000\",\"newCode\":\"123456\",\"currentPassword\":\"wrong123\"}";
+        mvc.perform(put("/api/me/phone").cookie(session, csrf).header("X-XSRF-TOKEN", csrf.getValue())
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isUnauthorized()).andExpect(jsonPath("$.code").value("INVALID_CREDENTIALS"));
+
+        body = body.replace("wrong123", "original123");
+        mvc.perform(put("/api/me/phone").cookie(session, csrf).header("X-XSRF-TOKEN", csrf.getValue())
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isOk());
+        mvc.perform(get("/api/me").cookie(session)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.maskedPhone").value("+86 133****3000"));
+        mvc.perform(post("/api/auth/password-login").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"phone\":\"13500135000\",\"password\":\"original123\"}"))
+                .andExpect(status().isUnauthorized());
+        mvc.perform(post("/api/auth/password-login").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"phone\":\"13300133000\",\"password\":\"original123\"}"))
+                .andExpect(status().isOk());
     }
 
     private org.springframework.test.web.servlet.ResultActions sendCode(String phone, String purpose) throws Exception {

@@ -51,16 +51,22 @@ public class AuthRepository {
         jdbc.update("UPDATE users SET avatar=?,updated_at=? WHERE id=?", avatar, at(now), id.toString());
     }
 
+    void updatePhone(UUID id, String phone, String phoneHash, Instant now) {
+        jdbc.update("UPDATE users SET phone_e164=?,phone_lookup_hash=?,updated_at=? WHERE id=?",
+                phone, phoneHash, at(now), id.toString());
+    }
+
     void insertAttempt(AttemptRow row) {
-        jdbc.update("INSERT INTO sms_verification_attempts(id,purpose,phone_lookup_hash,masked_phone,source_hash,provider,provider_out_id,status,created_at,expires_at) VALUES(?,?,?,?,?,?,?,?,?,?)",
-                row.id().toString(), row.purpose(), row.phoneHash(), row.maskedPhone(), row.sourceHash(), row.provider(),
-                row.outId(), row.status(), at(row.createdAt()), at(row.expiresAt()));
+        jdbc.update("INSERT INTO sms_verification_attempts(id,purpose,phone_lookup_hash,masked_phone,source_hash,ip_hash,device_hash,session_hash,provider,provider_out_id,status,created_at,expires_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                row.id().toString(), row.purpose(), row.phoneHash(), row.maskedPhone(), row.sourceHash(), row.ipHash(),
+                row.deviceHash(), row.sessionHash(), row.provider(), row.outId(), row.status(), at(row.createdAt()), at(row.expiresAt()));
     }
 
     Optional<AttemptRow> lockAttempt(UUID id) {
-        return jdbc.query("SELECT id,purpose,phone_lookup_hash,masked_phone,source_hash,provider,provider_out_id,status,failure_count,created_at,expires_at FROM sms_verification_attempts WHERE id=? FOR UPDATE",
+        return jdbc.query("SELECT id,purpose,phone_lookup_hash,masked_phone,source_hash,ip_hash,device_hash,session_hash,provider,provider_out_id,status,failure_count,created_at,expires_at FROM sms_verification_attempts WHERE id=? FOR UPDATE",
                 (rs, row) -> new AttemptRow(UUID.fromString(rs.getString("id")), rs.getString("purpose"), rs.getString("phone_lookup_hash"),
-                        rs.getString("masked_phone"), rs.getString("source_hash"), rs.getString("provider"), rs.getString("provider_out_id"),
+                        rs.getString("masked_phone"), rs.getString("source_hash"), rs.getString("ip_hash"), rs.getString("device_hash"),
+                        rs.getString("session_hash"), rs.getString("provider"), rs.getString("provider_out_id"),
                         rs.getString("status"), rs.getInt("failure_count"), instant(rs, "created_at"), instant(rs, "expires_at")), id.toString())
                 .stream().findFirst();
     }
@@ -89,6 +95,14 @@ public class AuthRepository {
     long sentForSourceSince(String sourceHash, Instant since) {
         return count("SELECT COUNT(*) FROM sms_verification_attempts WHERE source_hash=? AND created_at>=? AND status IN ('PENDING','SENT','VERIFIED','CONSUMED')", sourceHash, at(since));
     }
+    long sentForDeviceSince(String deviceHash, Instant since) {
+        if (deviceHash == null) return 0;
+        return count("SELECT COUNT(*) FROM sms_verification_attempts WHERE device_hash=? AND created_at>=? AND status IN ('PENDING','SENT','VERIFIED','CONSUMED')", deviceHash, at(since));
+    }
+    long sentForSessionSince(String sessionHash, Instant since) {
+        if (sessionHash == null) return 0;
+        return count("SELECT COUNT(*) FROM sms_verification_attempts WHERE session_hash=? AND created_at>=? AND status IN ('PENDING','SENT','VERIFIED','CONSUMED')", sessionHash, at(since));
+    }
     long sentSince(Instant since) {
         return count("SELECT COUNT(*) FROM sms_verification_attempts WHERE created_at>=? AND status IN ('PENDING','SENT','VERIFIED','CONSUMED')", at(since));
     }
@@ -107,6 +121,15 @@ public class AuthRepository {
 
     void revokeSessions(UUID userId, Instant now) {
         jdbc.update("UPDATE auth_sessions SET revoked_at=? WHERE user_id=? AND revoked_at IS NULL", at(now), userId.toString());
+    }
+
+    void revokeOtherSessions(UUID userId, UUID currentSessionId, Instant now) {
+        jdbc.update("UPDATE auth_sessions SET revoked_at=? WHERE user_id=? AND id<>? AND revoked_at IS NULL",
+                at(now), userId.toString(), currentSessionId.toString());
+    }
+
+    void revokeTrustedDevices(UUID userId, Instant now) {
+        jdbc.update("UPDATE trusted_devices SET revoked_at=? WHERE user_id=? AND revoked_at IS NULL", at(now), userId.toString());
     }
 
     SessionTokens createSession(UUID userId, Instant now, Instant expiresAt) {
@@ -153,7 +176,8 @@ public class AuthRepository {
     }
 
     record UserRow(UUID id, String phone, String passwordHash, String avatar, Instant createdAt, Instant lastLoginAt) { }
-    record AttemptRow(UUID id, String purpose, String phoneHash, String maskedPhone, String sourceHash, String provider,
+    record AttemptRow(UUID id, String purpose, String phoneHash, String maskedPhone, String sourceHash, String ipHash,
+                      String deviceHash, String sessionHash, String provider,
                       String outId, String status, int failureCount, Instant createdAt, Instant expiresAt) { }
     record SessionTokens(UUID id, String token, String csrfToken, Instant expiresAt) { }
     record SessionUser(UUID sessionId, UUID userId, String csrfHash, Instant expiresAt, String phone) { }

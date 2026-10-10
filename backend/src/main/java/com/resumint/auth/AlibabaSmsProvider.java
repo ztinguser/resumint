@@ -24,11 +24,15 @@ final class AlibabaSmsProvider implements SmsProvider {
             @Value("${resumint.sms.sign-name}") String signName,
             @Value("${resumint.sms.template-code}") String templateCode,
             @Value("${resumint.sms.scheme-name}") String schemeName,
+            @Value("${resumint.auth.phone-lookup-secret}") String phoneLookupSecret,
             @Value("${resumint.sms.code-minutes}") long codeMinutes) throws Exception {
         String accessKeyId = System.getenv("ALIBABA_CLOUD_ACCESS_KEY_ID");
         String accessKeySecret = System.getenv("ALIBABA_CLOUD_ACCESS_KEY_SECRET");
-        if (blank(accessKeyId) || blank(accessKeySecret) || blank(signName) || blank(templateCode)) {
-            throw new IllegalStateException("Alibaba SMS requires environment credentials, sign name and template code");
+        if (blank(accessKeyId) || blank(accessKeySecret) || blank(signName) || blank(templateCode) || blank(schemeName)) {
+            throw new IllegalStateException("Alibaba SMS requires environment credentials, sign name, template code and scheme name");
+        }
+        if (phoneLookupSecret.startsWith("dev-only-")) {
+            throw new IllegalStateException("Alibaba SMS requires a non-default phone lookup secret");
         }
         Config config = new Config().setAccessKeyId(accessKeyId).setAccessKeySecret(accessKeySecret).setEndpoint(endpoint);
         this.client = new Client(config);
@@ -45,7 +49,7 @@ final class AlibabaSmsProvider implements SmsProvider {
             SendSmsVerifyCodeRequest request = new SendSmsVerifyCodeRequest()
                     .setPhoneNumber(phoneNational).setCountryCode("86").setSignName(signName)
                     .setTemplateCode(templateCode).setTemplateParam("{\"code\":\"##code##\",\"min\":\"" + validSeconds / 60 + "\"}")
-                    .setOutId(outId).setSchemeName(blank(schemeName) ? null : schemeName)
+                    .setOutId(outId).setSchemeName(schemeName)
                     .setCodeLength(6L).setCodeType(1L).setDuplicatePolicy(1L)
                     .setValidTime(validSeconds).setReturnVerifyCode(false);
             var body = client.sendSmsVerifyCode(request).getBody();
@@ -64,7 +68,7 @@ final class AlibabaSmsProvider implements SmsProvider {
         try {
             CheckSmsVerifyCodeRequest request = new CheckSmsVerifyCodeRequest()
                     .setPhoneNumber(phoneNational).setCountryCode("86").setOutId(outId)
-                    .setSchemeName(blank(schemeName) ? null : schemeName).setVerifyCode(code);
+                    .setSchemeName(schemeName).setVerifyCode(code);
             var body = client.checkSmsVerifyCode(request).getBody();
             return body != null && Boolean.TRUE.equals(body.getSuccess()) && "OK".equals(body.getCode())
                     && body.getModel() != null && "PASS".equals(body.getModel().getVerifyResult())

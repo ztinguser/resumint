@@ -1,0 +1,58 @@
+# M4 阿里云号码认证安全配置
+
+本项目在线版使用号码认证服务 `Dypnsapi` 的 `SendSmsVerifyCode` 和
+`CheckSmsVerifyCode`，不使用普通短信服务 `Dysmsapi.SendSms` 代替核验。真实联调前，
+请在本机或部署平台的密钥管理界面完成以下配置；不要把任何 AccessKey、验证码或完整
+测试手机号写入聊天、仓库、数据库迁移、截图或测试报告。
+
+## 账号和资源
+
+1. 使用已实名认证且已开通号码认证服务的阿里云账号。
+2. 在号码认证控制台准备状态可用、互相匹配的短信签名、验证码模板和短信认证方案。
+   模板参数使用动态验证码，例如 `{"code":"##code##","min":"5"}`；不能使用静态验证码。
+3. 确认账户余额、套餐或其他计费资源足够，并单独准备一个获得授权的中国大陆测试手机号。
+4. 创建专用 RAM 用户，禁止使用主账号 AccessKey。只授予以下两个动作；这两个 OpenAPI
+   不支持更细的资源级授权，因此资源为 `*`：
+
+```json
+{
+  "Version": "1",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "dypns:SendSmsVerifyCode",
+        "dypns:CheckSmsVerifyCode"
+      ],
+      "Resource": "*"
+    }
+  ]
+}
+```
+
+## 仅通过部署环境注入
+
+在本机 PowerShell 会话或部署平台 Secret 中设置下列变量。不要创建已提交的 `.env`
+文件，也不要把变量值粘贴给 Codex：
+
+```text
+SMS_PROVIDER=alibaba
+ALIBABA_CLOUD_ACCESS_KEY_ID=<RAM AccessKey ID>
+ALIBABA_CLOUD_ACCESS_KEY_SECRET=<RAM AccessKey Secret>
+ALIBABA_CLOUD_SMS_SIGN_NAME=<已审核签名>
+ALIBABA_CLOUD_SMS_TEMPLATE_CODE=<已审核模板 Code>
+ALIBABA_CLOUD_SMS_SCHEME_NAME=<短信认证方案名称>
+AUTH_PHONE_LOOKUP_SECRET=<独立生成的高熵随机值>
+AUTH_COOKIE_SECURE=true
+```
+
+`AUTH_PHONE_LOOKUP_SECRET` 不得与 AccessKey 或其他项目密钥复用。应用在
+`SMS_PROVIDER=alibaba` 时会拒绝缺少签名、模板、方案、AccessKey 或仍使用开发默认
+手机号索引密钥的配置。
+
+## 联调证据
+
+真实联调必须记录脱敏后的业务结果，而不是密钥或完整请求体：发送是否被供应商接受、
+实际收到验证码、错误验证码被拒绝、只有 `Success=true`、`Code=OK` 且
+`VerifyResult=PASS` 并匹配本次 `OutId` 时通过、验证码不可重复使用，以及手机号/IP/设备/
+会话/全局限流。发送接口返回成功不等于核验通过。

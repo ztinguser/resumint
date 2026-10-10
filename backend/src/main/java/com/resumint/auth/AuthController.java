@@ -35,7 +35,7 @@ public final class AuthController {
 
     @PostMapping("/auth/sms-code")
     SmsVerificationService.SendReceipt send(@Valid @RequestBody SendSmsRequest body, HttpServletRequest request) {
-        return sms.send(body.phone(), body.purpose(), source(request));
+        return sms.send(body.phone(), body.purpose(), sources(request));
     }
 
     @PostMapping("/auth/sms-login")
@@ -84,6 +84,14 @@ public final class AuthController {
         return ResponseEntity.ok(Map.of("updated", true));
     }
 
+    @PutMapping("/me/phone")
+    ResponseEntity<Map<String,Boolean>> phone(@AuthenticationPrincipal AuthPrincipal principal,
+            @Valid @RequestBody ChangePhoneRequest body) {
+        auth.changePhone(principal.userId(), principal.sessionId(), body.oldAttemptId(), body.oldPhone(), body.oldCode(),
+                body.newAttemptId(), body.newPhone(), body.newCode(), body.currentPassword());
+        return ResponseEntity.ok(Map.of("updated", true));
+    }
+
     private ResponseEntity<LoginResponse> loginResponse(AuthService.LoginResult result) {
         LoginResponse body = new LoginResponse(result.userId(), result.maskedPhone(), result.avatar(), result.passwordSet(), result.registered());
         return ResponseEntity.ok()
@@ -101,8 +109,10 @@ public final class AuthController {
                 .maxAge(maxAge.isNegative() ? Duration.ZERO : maxAge).build();
     }
     private ResponseCookie clear(String name) { return cookie(name, "", Duration.ZERO, !AuthSessionFilter.CSRF_COOKIE.equals(name)); }
-    private static String source(HttpServletRequest request) {
-        return request.getRemoteAddr() + "|" + String.valueOf(request.getHeader("User-Agent"));
+    private static SmsVerificationService.RateLimitSources sources(HttpServletRequest request) {
+        return new SmsVerificationService.RateLimitSources(request.getRemoteAddr(),
+                AuthSessionFilter.cookie(request, AuthSessionFilter.DEVICE_COOKIE),
+                AuthSessionFilter.cookie(request, AuthSessionFilter.SESSION_COOKIE));
     }
 
     public record SendSmsRequest(@NotBlank String phone, @NotBlank String purpose) { }
@@ -111,6 +121,8 @@ public final class AuthController {
     public record PasswordResetRequest(@NotNull UUID attemptId, @NotBlank String phone, @NotBlank String code, @NotBlank String newPassword) { }
     public record SetPasswordRequest(String currentPassword, @NotBlank String newPassword) { }
     public record AvatarRequest(@NotBlank String avatar) { }
+    public record ChangePhoneRequest(@NotNull UUID oldAttemptId, @NotBlank String oldPhone, @NotBlank String oldCode,
+            @NotNull UUID newAttemptId, @NotBlank String newPhone, @NotBlank String newCode, String currentPassword) { }
     public record LoginResponse(UUID userId, String maskedPhone, String avatar, boolean passwordSet, boolean registered) { }
     public record MeResponse(UUID userId, String maskedPhone, String avatar, boolean passwordSet) { }
 }
