@@ -1,4 +1,4 @@
-export type CurrentUser={userId:string;maskedPhone:string;avatar:"DEFAULT"|"MALE"|"FEMALE";passwordSet:boolean};
+export type CurrentUser={userId:string;maskedPhone:string;avatar:"DEFAULT"|"MALE"|"FEMALE";passwordSet:boolean;role:"USER"|"ADMIN"};
 export class ApiError extends Error{constructor(public status:number,public code:string,message:string,public details:Record<string,unknown>={}){super(message);}}
 const csrf=()=>document.cookie.split("; ").find((value)=>value.startsWith("XSRF-TOKEN="))?.split("=").slice(1).join("=");
 export async function apiFetch<T>(input:string,init:RequestInit={}):Promise<T>{
