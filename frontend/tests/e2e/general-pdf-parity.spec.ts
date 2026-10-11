@@ -14,8 +14,12 @@ async function geometry(page:Page):Promise<Geometry>{
 test("general PDF uses the same divider and vertical rhythm as the workbench",async({page})=>{
   await page.goto("/editor?template=general-verdant&qa=pdf-parity");
   const workbench=await geometry(page);
+  await expect(page.locator(".general-profile-copy > div.direct-editable")).toHaveCSS("color","rgb(0, 0, 0)");
+  await expect(page.locator('[data-section-id="general-summary"] .general-entry-title')).toHaveCount(0);
   await page.goto("/print?fixture=general-default");
   await page.emulateMedia({media:"print"});
   await expect(page.locator(".general-template-page")).toHaveCount(1);
+  await expect(page.locator(".general-entry-summary").first()).toHaveCSS("color","rgb(0, 0, 0)");
+  await expect(page.getByText("总结",{exact:true})).toHaveCount(0);
   expect(await geometry(page)).toEqual(workbench);
 });

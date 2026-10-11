@@ -7,7 +7,9 @@ describe("通用模板候选稿", () => {
     const document = createGeneralDocument();
     expect(document.template.id).toBe(GENERAL_TEMPLATE_ID);
     expect(document.profile.contactTitle).toBe("联系方式");
+    expect(document.layout.theme.accentColor).toBe("#000000");
     expect(document.sections.map(section => section.title)).toEqual(["个人简介", "教育经历", "工作经历", "个人总结"]);
+    expect(document.hiddenElementIds).toContain("item.general-summary-copy.title");
     expect(document.profile.portrait?.src).toBe(GENERAL_AVATAR_PATH);
     expect(GENERAL_AVATAR_PATH).toMatch(/general-avatar-[a-f0-9]{16}\.png$/);
   });

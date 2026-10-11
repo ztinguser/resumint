@@ -23,9 +23,10 @@ export function createGeneralDocument(): ResumeDocument {
     layout: {
       kind: "single",
       page: { size: "A4", marginMm: 14 },
-      theme: { fontFamily: "Microsoft YaHei", accentColor: "#2f302f", fontSizePt: 9, lineHeight: 1.68 },
+      theme: { fontFamily: "Microsoft YaHei", accentColor: "#000000", fontSizePt: 9, lineHeight: 1.68 },
       decorations: [],
     },
+    hiddenElementIds: ["item.general-summary-copy.title"],
     sections: [
       {
         id: "general-profile",

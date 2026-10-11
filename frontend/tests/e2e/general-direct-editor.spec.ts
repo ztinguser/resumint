@@ -1,5 +1,23 @@
 import { expect, test } from "@playwright/test";
 
+test("general template defaults body copy to black and omits the redundant summary item title", async ({ page }) => {
+  await page.goto("/editor?template=general-verdant&qa=default-copy");
+
+  const blackCopy = page.locator(
+    ".general-profile-copy > div.direct-editable, .general-entry-summary.direct-editable",
+  );
+  await expect(blackCopy).toHaveCount(6);
+  for (const element of await blackCopy.all()) {
+    await expect(element).toHaveCSS("color", "rgb(0, 0, 0)");
+  }
+  await page.getByLabel("文字颜色", { exact: true }).fill("#234b42");
+  await expect(blackCopy.first()).toHaveCSS("color", "rgb(35, 75, 66)");
+
+  const summarySection = page.locator('[data-section-id="general-summary"]');
+  await expect(summarySection.locator(".general-entry-title")).toHaveCount(0);
+  await expect(summarySection.getByRole("textbox", { name: "描述，双击编辑" })).toBeVisible();
+});
+
 test("module changes do not draw page-wide lines through the continuous canvas", async ({ page }) => {
   await page.goto("/editor?template=general-verdant&qa=module-divider");
 
@@ -110,12 +128,12 @@ test("general template supports module duplication, consistent contacts, and ele
   await expect(page.getByText("9.5 pt", { exact: true })).toBeVisible();
   await expect(page.getByText("0.5 mm", { exact: true })).toBeVisible();
 
-  const summaryItemTitle=page.locator('[data-element-id="item.general-summary-copy.title"]');
-  await summaryItemTitle.click();
-  await page.getByRole("button", { name: "删除元素 条目名称" }).click();
-  await expect(summaryItemTitle).toHaveCount(0);
+  const educationSubtitle=page.locator('[data-element-id="item.general-education-1.subtitle"]');
+  await educationSubtitle.click();
+  await page.getByRole("button", { name: "删除元素 角色或专业" }).click();
+  await expect(educationSubtitle).toHaveCount(0);
   await page.getByRole("button", { name: "撤销" }).click();
-  await expect(summaryItemTitle).toHaveText("总结");
+  await expect(educationSubtitle).toHaveText("视觉传达设计 · 学士");
 
   const downloadPromise = page.waitForEvent("download");
   await page.getByRole("button", { name: "导出 PDF" }).click();
