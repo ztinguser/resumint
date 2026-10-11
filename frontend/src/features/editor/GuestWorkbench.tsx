@@ -11,11 +11,13 @@ import { exportResume } from "@/features/export/export-client";
 import { LoginBubble } from "@/features/auth/LoginBubble";
 import { ApiError, apiFetch, currentUser, type CurrentUser } from "@/features/auth/auth-client";
 import { edited, initialSaveState, loadedSaved, saveFailed, saveStarted, saveSucceeded, type SaveState } from "./save-state";
+import {applyTemplateToDocument,type SwitchTemplate} from "./template-switch";
 
 const sectionLabels: Record<ResumeSection["type"], string> = { experience: "工作经历", education: "教育经历", project: "项目经历", skills: "技能", custom: "自定义模块" };
 const newId = (prefix: string) => `${prefix}-${crypto.randomUUID()}`;
 
 type Draft={id:string;title:string;templateId:string;templateVersion:number;schemaVersion:string;document:ResumeDocument;revision:number;updatedAt:string};
+type PublicTemplate=SwitchTemplate;
 
 export function GuestWorkbench({templateId,initialDraftId}:{templateId:string;initialDraftId?:string}) {
   const router=useRouter();
@@ -38,6 +40,9 @@ export function GuestWorkbench({templateId,initialDraftId}:{templateId:string;in
   const [conflict,setConflict]=useState<Draft|null>(null);
   const [compareConflict,setCompareConflict]=useState(false);
   const [logoutPrompt,setLogoutPrompt]=useState(false);
+  const [switchOpen,setSwitchOpen]=useState(false);
+  const [templates,setTemplates]=useState<PublicTemplate[]>([]);
+  const [switchTarget,setSwitchTarget]=useState<PublicTemplate|null>(null);
   const dragRef = useRef<{ id: string; startX: number; startY: number; originX: number; originY: number } | null>(null);
   const exportAbortRef = useRef<AbortController | null>(null);
   const document = dragDocument ?? history.present;
@@ -113,6 +118,9 @@ export function GuestWorkbench({templateId,initialDraftId}:{templateId:string;in
   const closeLogin=()=>{sessionStorage.setItem("resumint-login-dismissed","1");setLoginOpen(false);};
   const performLogout=async()=>{try{await apiFetch<void>("/api/auth/logout",{method:"POST"});}finally{setUser(null);draftIdRef.current=undefined;serverRevisionRef.current=null;setSaveState(initialSaveState);setLogoutPrompt(false);}};
   const requestLogout=()=>{if(["unsaved","dirty","failed","saving"].includes(saveState.status))setLogoutPrompt(true);else void performLogout();};
+  const openTemplateSwitch=async()=>{try{const values=await apiFetch<PublicTemplate[]>("/api/templates");setTemplates(values);const first=values.find(value=>value.id!==document.template.id)??values[0]??null;setSwitchTarget(first);setSwitchOpen(true);}catch(error){setNotice(error instanceof Error?error.message:"模板列表加载失败");}};
+  const previewSwitched=useMemo(()=>switchTarget?applyTemplateToDocument(document,switchTarget):null,[document,switchTarget]);
+  const confirmTemplateSwitch=()=>{if(!switchTarget)return;dispatch({type:"commit",document:applyTemplateToDocument(history.present,switchTarget)});setSaveState(current=>edited(current));setSwitchOpen(false);setNotice(`已切换到“${switchTarget.name}”，内容已保留；再次手动保存后才更新云端绑定。`);};
 
   const emailError=/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(document.profile.email)?"":"请输入有效邮箱地址";
   const websiteError=document.profile.website&&!/^https?:\/\//i.test(document.profile.website.href)?"链接需以 http:// 或 https:// 开头":"";
@@ -123,12 +131,13 @@ export function GuestWorkbench({templateId,initialDraftId}:{templateId:string;in
     <header className="workbench-topbar">
       <a className="brand" href="/templates">Resumint</a><span className="divider" />
       <input aria-label="简历名称" className="document-title title-input" maxLength={120} value={documentTitle} onChange={event=>{setDocumentTitle(event.target.value);setSaveState(current=>edited(current));}}/><span className={`unsaved save-${saveState.status}`}><i /> {saveLabel}</span>
-      <div className="topbar-actions"><button aria-label="撤销" disabled={!history.past.length} onClick={() => historyAction("undo")}>↶</button><button aria-label="重做" disabled={!history.future.length} onClick={() => historyAction("redo")}>↷</button><button className="secondary" disabled={saveState.status==="saving"} onClick={()=>void saveDraft()}>保存</button>{exporting&&<button className="secondary" onClick={()=>exportAbortRef.current?.abort()}>取消导出</button>}<button className="primary" disabled={exporting||!templateReady||!!emailError||!!websiteError} onClick={startExport}>{templateReady?exportState:"加载模板…"}</button><div className="account-anchor"><button aria-label="账号菜单" onClick={()=>user?router.push("/account"):setLoginOpen(value=>!value)}>{user?user.maskedPhone:"登录"}</button><LoginBubble open={loginOpen} onClose={closeLogin} onLogin={value=>{setUser(value);sessionStorage.removeItem("resumint-login-dismissed");}}/></div>{user&&<button className="logout-link" onClick={requestLogout}>退出</button>}</div>
+      <div className="topbar-actions"><button aria-label="撤销" disabled={!history.past.length} onClick={() => historyAction("undo")}>↶</button><button aria-label="重做" disabled={!history.future.length} onClick={() => historyAction("redo")}>↷</button><button className="secondary" onClick={()=>void openTemplateSwitch()}>切换模板</button><button className="secondary" disabled={saveState.status==="saving"} onClick={()=>void saveDraft()}>保存</button>{exporting&&<button className="secondary" onClick={()=>exportAbortRef.current?.abort()}>取消导出</button>}<button className="primary" disabled={exporting||!templateReady||!!emailError||!!websiteError} onClick={startExport}>{templateReady?exportState:"加载模板…"}</button><div className="account-anchor"><button aria-label="账号菜单" onClick={()=>user?router.push("/account"):setLoginOpen(value=>!value)}>{user?user.maskedPhone:"登录"}</button><LoginBubble open={loginOpen} onClose={closeLogin} onLogin={value=>{setUser(value);sessionStorage.removeItem("resumint-login-dismissed");}}/></div>{user&&<button className="logout-link" onClick={requestLogout}>退出</button>}</div>
     </header>
     {!user&&<div className="guest-warning" role="status">当前为游客模式，内容尚未保存。刷新或关闭页面后将无法恢复；<button onClick={()=>setLoginOpen(true)}>登录后手动保存</button>。</div>}
     {notice && <div className="toast" role="alert"><span>{notice}</span><button aria-label="关闭提示" onClick={() => setNotice(null)}>×</button></div>}
     {conflict&&<div className="dialog-backdrop"><section className="conflict-dialog" role="dialog" aria-label="版本冲突"><span className="eyebrow">HTTP 409</span><h2>服务器版本已更新</h2><p>本地工作副本仍完整保留。服务器当前为修订 {conflict.revision}，更新于 {new Date(conflict.updatedAt).toLocaleString()}。</p>{compareConflict&&<div className="conflict-compare"><div><strong>本地</strong><pre>{JSON.stringify(history.present.profile,null,2)}</pre></div><div><strong>服务器</strong><pre>{JSON.stringify(conflict.document.profile,null,2)}</pre></div></div>}<div className="dialog-actions"><button onClick={reloadConflict}>重新加载服务器版本</button><button onClick={()=>void saveDraft(true)}>本地另存为新草稿</button><button onClick={()=>setCompareConflict(true)}>查看差异并人工合并</button><button onClick={()=>setConflict(null)}>保留本地，稍后处理</button></div></section></div>}
     {logoutPrompt&&<div className="dialog-backdrop"><section className="conflict-dialog" role="dialog" aria-label="退出确认"><h2>还有未保存更改</h2><p>退出不会偷偷保存。请选择继续编辑、先手动保存，或放弃本次更改后退出。</p><div className="dialog-actions"><button onClick={()=>setLogoutPrompt(false)}>继续编辑</button><button onClick={async()=>{if(await saveDraft())await performLogout();}}>保存后退出</button><button className="danger" onClick={()=>void performLogout()}>放弃并退出</button></div></section></div>}
+    {switchOpen&&<div className="dialog-backdrop"><section className="template-switch-dialog" role="dialog" aria-label="切换模板预览"><div className="switch-copy"><span className="eyebrow">先预览，后确认</span><h2>切换模板不会立即保存</h2><label>目标模板<select value={switchTarget?.id??""} onChange={event=>setSwitchTarget(templates.find(value=>value.id===event.target.value)??null)}>{templates.map(value=><option value={value.id} key={value.id}>{value.name} · v{value.version}</option>)}</select></label><div className="switch-impact"><h3>内容影响清单</h3><dl><dt>保留</dt><dd>个人信息、全部模块、重复经历、自定义字段</dd><dt>映射</dt><dd>主栏 / 侧栏按目标模板的栏目规则重新排布</dd><dt>重置</dt><dd>主题色、页边距、栏目和装饰改为目标模板默认值</dd><dt>不兼容</dt><dd>无；未知模块与字段使用通用兜底组件展示</dd></dl></div><p>确认后作为一次操作写入撤销历史；只有再次点击“保存”，云端草稿才绑定新版本。</p><div className="dialog-actions"><button className="primary" onClick={confirmTemplateSwitch}>确认切换</button><button onClick={()=>setSwitchOpen(false)}>取消，保持不变</button></div></div>{previewSwitched&&<div className="switch-preview"><div><ResumePrintDocument key={`${switchTarget?.id}-${switchTarget?.version}`} initialDocument={previewSwitched}/></div></div>}</section></div>}
     <div className="workbench-grid">
       <aside className="editor-panel">
         <div className="panel-heading"><div><span className="eyebrow">内容结构</span><h1>简历内容</h1></div><button onClick={() => { const id=newId("section"); commit((next)=>next.sections.push({id,type:"custom",title:"自定义模块",column:"main",visible:true,items:[]})); setSelectedSectionId(id); }}>＋ 模块</button></div>

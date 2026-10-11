@@ -29,8 +29,6 @@ export function ResumePrintDocument({ initialDocument }: { initialDocument: Resu
   const twoColumn = document.layout.kind === "two-column";
   const portraitSize = Math.min(document.profile.portrait?.slotSizeMm ?? 0, 40);
 
-  useEffect(() => { setDocument(initialDocument); }, [initialDocument]);
-
   useEffect(() => {
     window.__RESUMINT_READY__ = false;
     window.renderResume = (next) => {
