@@ -2,6 +2,9 @@ import { expect, test } from "@playwright/test";
 
 test("guest selects a template, edits a resume, and downloads a generated PDF",async({page})=>{
   await page.goto("/templates");
+  await expect(page.locator(".category-tabs")).toHaveCount(0);
+  await expect(page.getByRole("button",{name:"全部",exact:true})).toHaveCount(0);
+  await expect(page.getByText("设计预览（待命名）",{exact:true})).toBeVisible();
   await expect(page.getByText("排版基准模板",{exact:true})).toBeVisible();
   await page.getByRole("article").filter({hasText:"排版基准模板"}).getByRole("link",{name:"使用此模板"}).click();
   await expect(page.getByRole("button",{name:"导出 PDF"})).toBeEnabled();

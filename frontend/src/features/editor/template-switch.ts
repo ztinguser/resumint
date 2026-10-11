@@ -1,7 +1,7 @@
 import type {ResumeDocument} from "@/resume/model";
 import {cloneDocument} from "./history";
 
-export type SwitchTemplate={id:string;name:string;category:string;tags:string[];version:number;config?:{visualKey?:string}};
+export type SwitchTemplate={id:string;name:string;tags:string[];version:number;config?:{visualKey?:string}};
 
 export function applyTemplateToDocument(source:ResumeDocument,target:SwitchTemplate):ResumeDocument{
   const next=cloneDocument(source);next.template={id:target.id,version:target.version};

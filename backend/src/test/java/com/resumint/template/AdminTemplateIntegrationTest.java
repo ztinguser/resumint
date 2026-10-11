@@ -102,7 +102,7 @@ class AdminTemplateIntegrationTest {
                 .andExpect(status().isOk()).andReturn();
         return new Session(cookie(login,"resumint_session"),cookie(login,"XSRF-TOKEN"));
     }
-    private String createBody(String name){return "{\"id\":\"general-verdant\",\"displayName\":\""+name+"\",\"category\":\"经典\",\"tags\":[\"通用\"],\"initialConfig\":{}}";}
+    private String createBody(String name){return "{\"id\":\"general-verdant\",\"displayName\":\""+name+"\",\"tags\":[\"结构清晰\"],\"initialConfig\":{}}";}
     private String saveBody(long revision,String visual){return "{\"expectedRevision\":"+revision+",\"schemaVersion\":\"1.0\",\"config\":{\"visualKey\":\""+visual+"\",\"layoutTree\":{\"children\":[]},\"componentCatalog\":[{\"kind\":\"header\"}],\"bindings\":[{\"kind\":\"custom-fields\",\"target\":\"sections.*.items.*.fields\",\"emptyBehavior\":\"omit\"}],\"fallback\":{\"unknownModule\":\"通用模块\",\"unknownField\":\"自定义字段\"}},\"componentVersions\":{\"header\":1},\"assetManifest\":[]}";}
     private static Cookie cookie(MvcResult result,String name){return Arrays.stream(result.getResponse().getCookies()).filter(value->name.equals(value.getName())).findFirst().orElseThrow();}
     private record Session(Cookie session,Cookie csrf){}

@@ -22,7 +22,6 @@ import tools.jackson.databind.ObjectMapper;
 @Service
 public class AdminTemplateService {
     private static final Pattern STABLE_ID = Pattern.compile("^[a-z][a-z0-9-]{2,63}$");
-    private static final List<String> CATEGORIES = List.of("极简", "经典", "现代", "创意", "应届生");
     private final JdbcTemplate jdbc;
     private final ObjectMapper json;
     private final TemplateConfigValidator validator;
@@ -34,17 +33,17 @@ public class AdminTemplateService {
 
     public List<TemplateSummary> list() {
         return jdbc.query("""
-                SELECT t.id,t.display_name,t.category,CAST(t.tags AS CHAR) tags,t.listed,t.current_version,
+                SELECT t.id,t.display_name,CAST(t.tags AS CHAR) tags,t.listed,t.current_version,
                   d.base_version,d.revision,d.updated_at
                 FROM templates t LEFT JOIN template_drafts d ON d.template_id=t.id ORDER BY t.created_at
-                """, (rs, row) -> new TemplateSummary(rs.getString("id"), rs.getString("display_name"), rs.getString("category"),
+                """, (rs, row) -> new TemplateSummary(rs.getString("id"), rs.getString("display_name"),
                         read(rs.getString("tags")), rs.getBoolean("listed"), nullableInt(rs,"current_version"),
                         nullableInt(rs,"base_version"), nullableLong(rs,"revision"), instant(rs,"updated_at")));
     }
 
     public TemplateDraft get(String id) {
         return jdbc.query("""
-                SELECT t.id,t.display_name,t.category,CAST(t.tags AS CHAR) tags,t.listed,t.current_version,
+                SELECT t.id,t.display_name,CAST(t.tags AS CHAR) tags,t.listed,t.current_version,
                   d.base_version,d.schema_version,CAST(d.config_json AS CHAR) config_json,
                   CAST(d.component_versions AS CHAR) component_versions,CAST(d.asset_manifest AS CHAR) asset_manifest,
                   d.revision,d.updated_at
@@ -58,15 +57,14 @@ public class AdminTemplateService {
         String id = request.id().strip().toLowerCase(Locale.ROOT);
         String name = validateName(request.displayName());
         if (!STABLE_ID.matcher(id).matches()) throw bad("TEMPLATE_ID_INVALID","稳定模板 ID 只能使用小写字母、数字和连字符");
-        if (!CATEGORIES.contains(request.category())) throw bad("TEMPLATE_CATEGORY_INVALID","模板分类不在允许范围内");
         try {
-            jdbc.update("INSERT INTO templates(id,display_name,category,tags,listed,current_version) VALUES(?,?,?,CAST(? AS JSON),FALSE,NULL)",
-                    id,name,request.category(),write(request.tags()));
+            jdbc.update("INSERT INTO templates(id,display_name,tags,listed,current_version) VALUES(?,?,CAST(? AS JSON),FALSE,NULL)",
+                    id,name,write(request.tags()));
             JsonNode initial = request.initialConfig()==null ? json.createObjectNode()
                     .set("layoutTree",json.createObjectNode().set("children",json.createArrayNode())) : request.initialConfig();
             jdbc.update("INSERT INTO template_drafts(template_id,base_version,schema_version,config_json,component_versions,asset_manifest,revision,updated_by,updated_at) VALUES(?,NULL,'1.0',CAST(? AS JSON),JSON_OBJECT(),JSON_ARRAY(),1,?,?)",
                     id,write(initial),actor.toString(),Timestamp.from(clock.instant()));
-            audit(id,actor,"CREATED",Map.of("displayName",name,"category",request.category()));
+            audit(id,actor,"CREATED",Map.of("displayName",name));
         } catch (DuplicateKeyException duplicate) {
             throw new ApiException(HttpStatus.CONFLICT,"TEMPLATE_ID_OR_NAME_EXISTS","模板稳定 ID 或展示名已存在");
         }
@@ -138,15 +136,15 @@ public class AdminTemplateService {
     private ApiException bad(String code,String message){return new ApiException(HttpStatus.BAD_REQUEST,code,message);}
     private String write(Object value){try{return json.writeValueAsString(value);}catch(Exception e){throw new IllegalArgumentException("invalid json",e);}}
     private JsonNode read(String value){if(value==null)return null;try{return json.readTree(value);}catch(Exception e){throw new IllegalStateException("invalid template json",e);}}
-    private TemplateDraft draft(ResultSet rs)throws SQLException{return new TemplateDraft(rs.getString("id"),rs.getString("display_name"),rs.getString("category"),read(rs.getString("tags")),rs.getBoolean("listed"),nullableInt(rs,"current_version"),nullableInt(rs,"base_version"),rs.getString("schema_version"),read(rs.getString("config_json")),read(rs.getString("component_versions")),read(rs.getString("asset_manifest")),nullableLong(rs,"revision"),instant(rs,"updated_at"));}
+    private TemplateDraft draft(ResultSet rs)throws SQLException{return new TemplateDraft(rs.getString("id"),rs.getString("display_name"),read(rs.getString("tags")),rs.getBoolean("listed"),nullableInt(rs,"current_version"),nullableInt(rs,"base_version"),rs.getString("schema_version"),read(rs.getString("config_json")),read(rs.getString("component_versions")),read(rs.getString("asset_manifest")),nullableLong(rs,"revision"),instant(rs,"updated_at"));}
     private static Integer nullableInt(ResultSet rs,String c)throws SQLException{int v=rs.getInt(c);return rs.wasNull()?null:v;}
     private static Long nullableLong(ResultSet rs,String c)throws SQLException{long v=rs.getLong(c);return rs.wasNull()?null:v;}
     private static Instant instant(ResultSet rs,String c)throws SQLException{Timestamp v=rs.getTimestamp(c);return v==null?null:v.toInstant();}
 
-    public record CreateTemplate(String id,String displayName,String category,List<String> tags,JsonNode initialConfig){}
+    public record CreateTemplate(String id,String displayName,List<String> tags,JsonNode initialConfig){}
     public record SaveDraft(long expectedRevision,String schemaVersion,JsonNode config,JsonNode componentVersions,JsonNode assetManifest){}
-    public record TemplateSummary(String id,String displayName,String category,JsonNode tags,boolean listed,Integer currentVersion,Integer baseVersion,Long draftRevision,Instant updatedAt){}
-    public record TemplateDraft(String id,String displayName,String category,JsonNode tags,boolean listed,Integer currentVersion,Integer baseVersion,String schemaVersion,JsonNode config,JsonNode componentVersions,JsonNode assetManifest,Long revision,Instant updatedAt){}
+    public record TemplateSummary(String id,String displayName,JsonNode tags,boolean listed,Integer currentVersion,Integer baseVersion,Long draftRevision,Instant updatedAt){}
+    public record TemplateDraft(String id,String displayName,JsonNode tags,boolean listed,Integer currentVersion,Integer baseVersion,String schemaVersion,JsonNode config,JsonNode componentVersions,JsonNode assetManifest,Long revision,Instant updatedAt){}
     public record PublishedVersion(String templateId,int version,Instant publishedAt){}
     public record AuditEvent(UUID id,String action,JsonNode details,Instant createdAt){}
 }

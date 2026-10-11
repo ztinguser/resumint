@@ -9,22 +9,22 @@ import org.apache.ibatis.annotations.Select;
 @Mapper
 public interface TemplateMapper {
     @Select("""
-        SELECT t.id,t.display_name name,t.category,CAST(t.tags AS CHAR) tags,t.current_version version,
+        SELECT t.id,t.display_name name,CAST(t.tags AS CHAR) tags,t.current_version version,
           tv.schema_version,CAST(tv.config_json AS CHAR) config_json,tv.published_at
         FROM templates t JOIN template_versions tv ON tv.template_id=t.id AND tv.version=t.current_version
         WHERE t.listed=TRUE AND tv.status='PUBLISHED' ORDER BY t.created_at
         """) List<TemplateRecord> findPublic();
     @Select("""
-        SELECT t.id,t.display_name name,t.category,CAST(t.tags AS CHAR) tags,t.current_version version,
+        SELECT t.id,t.display_name name,CAST(t.tags AS CHAR) tags,t.current_version version,
           tv.schema_version,CAST(tv.config_json AS CHAR) config_json,tv.published_at
         FROM templates t JOIN template_versions tv ON tv.template_id=t.id AND tv.version=t.current_version
         WHERE t.id=#{id} AND t.listed=TRUE AND tv.status='PUBLISHED'
         """) TemplateRecord findPublicById(@Param("id") String id);
     @Select("""
-        SELECT t.id,t.display_name name,t.category,CAST(t.tags AS CHAR) tags,tv.version,
+        SELECT t.id,t.display_name name,CAST(t.tags AS CHAR) tags,tv.version,
           tv.schema_version,CAST(tv.config_json AS CHAR) config_json,tv.published_at
         FROM templates t JOIN template_versions tv ON tv.template_id=t.id
         WHERE t.id=#{id} AND tv.version=#{version} AND tv.status='PUBLISHED'
         """) TemplateRecord findPublishedVersion(@Param("id") String id,@Param("version") int version);
-    record TemplateRecord(String id,String name,String category,String tags,int version,String schemaVersion,String configJson,Instant publishedAt) { }
+    record TemplateRecord(String id,String name,String tags,int version,String schemaVersion,String configJson,Instant publishedAt) { }
 }

@@ -28,8 +28,8 @@ public final class TemplateController {
         return ResponseEntity.ok().cacheControl(CacheControl.maxAge(java.time.Duration.ofDays(365)).cachePublic().immutable()).body(response(row));
     }
     private TemplateResponse response(TemplateMapper.TemplateRecord row) {
-        return new TemplateResponse(row.id(),row.name(),row.category(),read(row.tags()),row.version(),row.schemaVersion(),read(row.configJson()));
+        return new TemplateResponse(row.id(),row.name(),read(row.tags()),row.version(),row.schemaVersion(),read(row.configJson()));
     }
     private JsonNode read(String value) { try { return objectMapper.readTree(value); } catch(Exception e) { throw new IllegalStateException("invalid published template json",e); } }
-    public record TemplateResponse(String id,String name,String category,JsonNode tags,int version,String schemaVersion,JsonNode config) { }
+    public record TemplateResponse(String id,String name,JsonNode tags,int version,String schemaVersion,JsonNode config) { }
 }

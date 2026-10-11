@@ -1,7 +1,7 @@
 import type { ResumeDocument } from "../model";
 
 export const GENERAL_TEMPLATE_ID = "general-verdant";
-export const GENERAL_TEMPLATE_NAME = "通用 · 设计预览";
+export const GENERAL_TEMPLATE_NAME = "设计预览（待命名）";
 export const GENERAL_AVATAR_PATH = "/assets/templates/general-avatar-d57f96285da78f3a.png";
 
 export function createGeneralDocument(): ResumeDocument {

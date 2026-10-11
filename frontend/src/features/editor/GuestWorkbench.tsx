@@ -41,7 +41,7 @@ export function GuestWorkbench({templateId,initialDraftId}:{templateId:string;in
   const draftIdRef=useRef<string|undefined>(initialDraftId);
   const serverRevisionRef=useRef<number|null>(null);
   const saveInFlightRef=useRef(false);
-  const [documentTitle,setDocumentTitle]=useState(templateId===GENERAL_TEMPLATE_ID?"通用简历":"未命名简历");
+  const [documentTitle,setDocumentTitle]=useState("未命名简历");
   const [saveState,setSaveState]=useState<SaveState>(initialSaveState);
   const [conflict,setConflict]=useState<Draft|null>(null);
   const [compareConflict,setCompareConflict]=useState(false);
