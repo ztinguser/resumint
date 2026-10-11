@@ -35,6 +35,7 @@ export type ResumeDocument = {
     phone?: string;
     location?: string;
     website?: ResumeLink;
+    contacts?: Array<{ id: string; label: string; value: string; href?: string }>;
     portrait?: { src: string; alt: string; slotSizeMm: number; cropScale?: number };
   };
   layout: {

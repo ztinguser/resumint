@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createGeneralDocument, GENERAL_AVATAR_PATH, GENERAL_TEMPLATE_ID } from "../../src/resume/templates/general";
+import { validateResumeDocument } from "../../src/resume/validation";
 
 describe("通用模板候选稿", () => {
   it("使用稳定模板 ID、中文标题和内容寻址示例素材", () => {
@@ -15,5 +16,6 @@ describe("通用模板候选稿", () => {
     expect(document.profile.fullName).toBe("林清远");
     expect(document.sections.flatMap(section => section.items).every(item => item.summary)).toBe(true);
     expect(document.sections.find(section => section.type === "experience")?.items).toHaveLength(2);
+    expect(validateResumeDocument(document)).toMatchObject({ valid: true, errors: [] });
   });
 });

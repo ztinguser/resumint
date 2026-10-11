@@ -29,12 +29,27 @@
         "phone": { "$ref": "#/$defs/text" },
         "location": { "$ref": "#/$defs/text" },
         "website": { "$ref": "#/$defs/link" },
+        "contacts": {
+          "type": "array",
+          "maxItems": 20,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "label", "value"],
+            "properties": {
+              "id": { "$ref": "#/$defs/stableId" },
+              "label": { "$ref": "#/$defs/text" },
+              "value": { "$ref": "#/$defs/text" },
+              "href": { "type": "string", "format": "uri", "pattern": "^https://" }
+            }
+          }
+        },
         "portrait": {
           "type": "object",
           "additionalProperties": false,
           "required": ["src", "alt", "slotSizeMm"],
           "properties": {
-            "src": { "type": "string", "pattern": "^data:image/(png|jpeg|webp|svg\\+xml);base64," },
+            "src": { "type": "string", "pattern": "^(data:image/(png|jpeg|webp|svg\\+xml);base64,|/assets/templates/[a-z0-9-]+\\.(png|jpeg|webp))" },
             "alt": { "$ref": "#/$defs/text" },
             "slotSizeMm": { "type": "number", "minimum": 16, "maximum": 100 },
             "cropScale": { "type": "number", "minimum": 1, "maximum": 4 }

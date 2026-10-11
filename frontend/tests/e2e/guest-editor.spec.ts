@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 test("guest selects a template, edits a resume, and downloads a generated PDF",async({page})=>{
   await page.goto("/templates");
   await expect(page.getByText("排版基准模板",{exact:true})).toBeVisible();
-  await page.getByRole("link",{name:"使用此模板"}).click();
+  await page.getByRole("article").filter({hasText:"排版基准模板"}).getByRole("link",{name:"使用此模板"}).click();
   await expect(page.getByRole("button",{name:"导出 PDF"})).toBeEnabled();
 
   const name=page.getByLabel("姓名");
