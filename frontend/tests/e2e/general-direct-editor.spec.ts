@@ -1,5 +1,32 @@
 import { expect, test } from "@playwright/test";
 
+test("module changes do not draw page-wide lines through the continuous canvas", async ({ page }) => {
+  await page.goto("/editor?template=general-verdant&qa=module-divider");
+
+  const canvas = page.locator(".general-template-page.is-editable");
+  await expect(canvas).toBeVisible();
+
+  await page.getByRole("button", { name: "复制模块 工作经历" }).click();
+  await expect(page.locator(".general-section-title")).toHaveText([
+    "教育经历",
+    "工作经历",
+    "工作经历",
+    "个人总结",
+  ]);
+
+  expect(await canvas.evaluate((element) => element.getBoundingClientRect().height)).toBeGreaterThan(1122);
+  await expect(canvas).toHaveCSS("background-image", "none");
+
+  const duplicatedWorkSection = page.locator(".general-section").nth(2);
+  await duplicatedWorkSection.getByRole("button", { name: "删除模块 工作经历" }).click();
+  await expect(page.locator(".general-section-title")).toHaveText([
+    "教育经历",
+    "工作经历",
+    "个人总结",
+  ]);
+  await expect(canvas).toHaveCSS("background-image", "none");
+});
+
 test("general template supports module duplication, consistent contacts, and element styling", async ({ page }) => {
   await page.goto("/editor?template=general-verdant&qa=direct-editor");
   await expect(page.locator(".general-section.is-selected")).toHaveCount(0, { timeout: 2_000 });
