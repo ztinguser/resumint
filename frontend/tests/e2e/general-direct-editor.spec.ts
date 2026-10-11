@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-test("general template supports module insertion, consistent contacts, and element styling", async ({ page }) => {
+test("general template supports module duplication, consistent contacts, and element styling", async ({ page }) => {
   await page.goto("/editor?template=general-verdant&qa=direct-editor");
   await expect(page.locator(".general-section.is-selected")).toHaveCount(0, { timeout: 2_000 });
 
@@ -23,14 +23,17 @@ test("general template supports module insertion, consistent contacts, and eleme
   await page.locator(".general-avatar").click();
   await expect(page.locator(".general-section.is-selected")).toHaveCount(0);
 
-  await page.getByRole("button", { name: "在工作经历后新增模块" }).click();
-  await page.getByRole("menuitem", { name: "项目经历" }).click();
+  await page.getByRole("button", { name: "复制模块 工作经历" }).click();
   await expect(page.locator(".general-section-title")).toHaveText([
     "教育经历",
     "工作经历",
-    "项目经历",
+    "工作经历",
     "个人总结",
   ]);
+  const duplicatedWorkSection=page.locator(".general-section").nth(2);
+  await expect(duplicatedWorkSection).toContainText("星海科技");
+  await expect(duplicatedWorkSection).toContainText("有光互动");
+  await expect(page.getByRole("menuitem")).toHaveCount(0);
 
   const contacts = page.locator(".contact-list-wrap li");
   await expect(contacts).toHaveCount(4);
@@ -48,10 +51,10 @@ test("general template supports module insertion, consistent contacts, and eleme
   await page.getByRole("button", { name: "撤销" }).click();
   await expect(page.getByText("江南大学", { exact: true })).toHaveCount(1);
 
-  await page.getByRole("button", { name: "删除模块 项目经历" }).click();
+  await duplicatedWorkSection.getByRole("button", { name: "删除模块 工作经历" }).click();
   await expect(page.locator(".general-section-title")).toHaveText(["教育经历", "工作经历", "个人总结"]);
   await page.getByRole("button", { name: "撤销" }).click();
-  await expect(page.locator(".general-section-title")).toHaveText(["教育经历", "工作经历", "项目经历", "个人总结"]);
+  await expect(page.locator(".general-section-title")).toHaveText(["教育经历", "工作经历", "工作经历", "个人总结"]);
 
   const schoolName = page.locator('[data-element-id="item.general-education-1.title"]');
   await schoolName.click();
@@ -59,7 +62,7 @@ test("general template supports module insertion, consistent contacts, and eleme
   const educationItem = page.locator('[data-item-id="general-education-1"]');
   await expect(educationSection).not.toHaveClass(/is-selected/);
   await expect(educationSection).toHaveClass(/has-selected-descendant/);
-  await expect(educationSection.getByRole("button", { name: "在教育经历后新增模块" })).toHaveCSS("opacity", "0");
+  await expect(educationSection.getByRole("button", { name: "复制模块 教育经历" })).toHaveCSS("opacity", "0");
   await expect(educationSection.getByRole("button", { name: "删除模块 教育经历" })).toHaveCSS("opacity", "0");
   await expect(educationItem).toHaveClass(/is-selected/);
   await expect(educationItem.getByRole("button", { name: "在江南大学后新增一项" })).toHaveCSS("opacity", "1");

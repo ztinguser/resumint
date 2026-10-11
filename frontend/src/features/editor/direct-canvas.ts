@@ -20,14 +20,14 @@ export function addContact(document:ResumeDocument,id:string):ResumeDocument{
   const next=structuredClone(document);(next.profile.contacts??=[]).push({id,label:"联系方式",value:"双击填写"});return next;
 }
 
-const sectionNames:Record<ResumeSection["type"],string>={experience:"工作经历",education:"教育经历",project:"项目经历",skills:"技能",custom:"自定义模块"};
-
-export function insertSectionAfter(sections:ResumeSection[],afterId:string,type:ResumeSection["type"],sectionId:string,itemId:string):ResumeSection[]{
-  const title=sectionNames[type];
-  const section:ResumeSection={id:sectionId,type,title,column:"main",visible:true,items:[{id:itemId,title:type==="custom"?"自定义内容":`新的${title}`,summary:"双击这里填写内容。"}]};
-  const index=sections.findIndex(item=>item.id===afterId);
-  const at=index<0?sections.length:index+1;
-  return [...sections.slice(0,at),section,...sections.slice(at)];
+export function duplicateSectionAfter(sections:ResumeSection[],sourceId:string,sectionId:string,createId:(kind:"item"|"field"|"block")=>string,elementStyles?:Record<string,ElementStyle>):ResumeSection[]{
+  const index=sections.findIndex(section=>section.id===sourceId);
+  if(index<0)return sections;
+  const source=structuredClone(sections[index]);
+  const idMap=new Map<string,string>([[`section.${source.id}.`,`section.${sectionId}.`]]);
+  const section:ResumeSection={...source,id:sectionId,items:source.items.map(item=>{const id=createId("item");idMap.set(`item.${item.id}.`,`item.${id}.`);return {...item,id,fields:item.fields?.map(field=>{const fieldId=createId("field");idMap.set(`field.${field.id}.`,`field.${fieldId}.`);return {...field,id:fieldId};}),richText:item.richText?.map(block=>{const blockId=createId("block");idMap.set(`block.${block.id}.`,`block.${blockId}.`);return {...block,id:blockId};})};})};
+  if(elementStyles)for(const[key,style]of Object.entries({...elementStyles}))for(const[from,to]of idMap)if(key.startsWith(from)){elementStyles[`${to}${key.slice(from.length)}`]=structuredClone(style);break;}
+  return [...sections.slice(0,index+1),section,...sections.slice(index+1)];
 }
 
 export function elementStyle(document:ResumeDocument,id:string):ElementStyle{return document.elementStyles?.[id]??{};}

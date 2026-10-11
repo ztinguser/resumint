@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 import { createGeneralDocument } from "../../src/resume/templates/general";
-import { addContact, elementStyleCss, insertItemAfter, insertSectionAfter, moveById, removeById, themeVariables } from "../../src/features/editor/direct-canvas";
+import { addContact, duplicateSectionAfter, elementStyleCss, insertItemAfter, moveById, removeById, themeVariables } from "../../src/features/editor/direct-canvas";
 import { paginateGeneralResume } from "../../src/resume/general-pagination";
 
 describe("direct resume canvas", () => {
@@ -28,11 +28,23 @@ describe("direct resume canvas", () => {
     expect(document.profile.email).toBe("qingyuan.lin@example.com");
   });
 
-  test("inserts a complete module after the selected module", () => {
+  test("duplicates the complete module after itself with independent stable ids", () => {
     const document=createGeneralDocument();
-    document.sections=insertSectionAfter(document.sections,"general-experience","project","project-new","project-item-new");
-    expect(document.sections.map(section=>section.id)).toEqual(["general-profile","general-education","general-experience","project-new","general-summary"]);
-    expect(document.sections[3]).toMatchObject({type:"project",title:"项目经历",items:[{id:"project-item-new"}]});
+    const source=document.sections.find(section=>section.id==="general-experience")!;
+    source.items[0].fields=[{id:"source-field",label:"地点",type:"short-text",value:"上海"}];
+    source.items[0].richText=[{id:"source-block",type:"paragraph",spans:[{text:"完整内容"}]}];
+    document.elementStyles={"section.general-experience.title":{color:"#123456"},"item.general-work-1.title":{fontSizePt:12}};
+    let id=0;
+    document.sections=duplicateSectionAfter(document.sections,"general-experience","section-copy",kind=>`${kind}-${++id}`,document.elementStyles);
+    expect(document.sections.map(section=>section.id)).toEqual(["general-profile","general-education","general-experience","section-copy","general-summary"]);
+    const copy=document.sections[3];
+    expect(copy).toMatchObject({type:source.type,title:source.title,column:source.column,visible:source.visible});
+    expect(copy.items.map(item=>({...item,id:undefined,fields:item.fields?.map(field=>({...field,id:undefined})),richText:item.richText?.map(block=>({...block,id:undefined}))}))).toEqual(source.items.map(item=>({...item,id:undefined,fields:item.fields?.map(field=>({...field,id:undefined})),richText:item.richText?.map(block=>({...block,id:undefined}))})));
+    expect(copy.items.map(item=>item.id)).not.toEqual(source.items.map(item=>item.id));
+    expect(copy.items[0].fields?.[0].id).not.toBe(source.items[0].fields?.[0].id);
+    expect(copy.items[0].richText?.[0].id).not.toBe(source.items[0].richText?.[0].id);
+    expect(document.elementStyles["section.section-copy.title"]).toEqual({color:"#123456"});
+    expect(document.elementStyles["item.item-1.title"]).toEqual({fontSizePt:12});
   });
 
   test("maps a selected element style to inline canvas properties", () => {

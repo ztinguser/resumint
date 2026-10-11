@@ -14,7 +14,7 @@ import { edited, initialSaveState, loadedSaved, saveFailed, saveStarted, saveSuc
 import {applyTemplateToDocument,type SwitchTemplate} from "./template-switch";
 import { GeneralTemplatePage } from "@/resume/GeneralTemplatePage";
 import { createGeneralDocument, GENERAL_TEMPLATE_ID } from "@/resume/templates/general";
-import {insertItemAfter,insertSectionAfter,moveById,removeById}from"./direct-canvas";
+import {duplicateSectionAfter,insertItemAfter,moveById,removeById}from"./direct-canvas";
 import{paginateGeneralResume}from"@/resume/general-pagination";
 
 const sectionLabels: Record<ResumeSection["type"], string> = { experience: "工作经历", education: "教育经历", project: "项目经历", skills: "技能", custom: "自定义模块" };
@@ -140,7 +140,7 @@ export function GuestWorkbench({templateId,initialDraftId}:{templateId:string;in
   const moveDirectItem=(sectionId:string,fromId:string,toId:string)=>updateSection(sectionId,section=>{section.items=moveById(section.items,fromId,toId);});
   const addDirectContact=()=>{const id=newId("contact");commit(next=>{(next.profile.contacts??=[]).push({id,label:"联系方式",value:"双击填写"});});setSelectedElement({id:`contact.${id}.value`,label:"联系方式"});};
   const deleteDirectContact=(id:string)=>{commit(next=>{next.profile.contacts=removeById(next.profile.contacts??[],id);});setSelectedElement(null);};
-  const addDirectSection=(afterSectionId:string,type:ResumeSection["type"])=>{const sectionId=newId("section");commit(next=>{next.sections=insertSectionAfter(next.sections,afterSectionId,type,sectionId,newId("item"));});setSelectedSectionId(sectionId);setSelectedElement(null);};
+  const addDirectSection=(sourceSectionId:string)=>{const sectionId=newId("section");commit(next=>{next.sections=duplicateSectionAfter(next.sections,sourceSectionId,sectionId,kind=>newId(kind),next.elementStyles);});setSelectedSectionId(sectionId);setSelectedElement(null);};
   const deleteDirectSection=(sectionId:string)=>{commit(next=>{next.sections=removeById(next.sections,sectionId);});setSelectedSectionId("");setSelectedElement(null);};
   const updateElementStyle=(id:string,key:keyof ElementStyle,value:ElementStyle[keyof ElementStyle])=>commit(next=>{const styles=next.elementStyles??={};styles[id]={...(styles[id]??{}),[key]:value};});
   const resetElementStyle=(id:string)=>commit(next=>{if(next.elementStyles)delete next.elementStyles[id];});
