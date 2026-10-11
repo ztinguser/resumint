@@ -20,6 +20,8 @@ server:
   port: ${PORT:8080}
 
 resumint:
+  admin:
+    phone: ${RESUMINT_ADMIN_PHONE:}
   auth:
     session-ttl: ${AUTH_SESSION_TTL:12h}
     trusted-device-ttl: ${AUTH_TRUSTED_DEVICE_TTL:180d}

@@ -67,7 +67,7 @@ public final class AuthController {
     @GetMapping("/me")
     MeResponse me(@AuthenticationPrincipal AuthPrincipal principal) {
         AuthRepository.UserRow user = auth.requireUser(principal.userId());
-        return new MeResponse(user.id(), PhoneNumbers.mask(user.phone()), user.avatar(), user.passwordHash() != null);
+        return new MeResponse(user.id(), PhoneNumbers.mask(user.phone()), user.avatar(), user.passwordHash() != null, user.role());
     }
 
     @PutMapping("/me/password")
@@ -124,5 +124,5 @@ public final class AuthController {
     public record ChangePhoneRequest(@NotNull UUID oldAttemptId, @NotBlank String oldPhone, @NotBlank String oldCode,
             @NotNull UUID newAttemptId, @NotBlank String newPhone, @NotBlank String newCode, String currentPassword) { }
     public record LoginResponse(UUID userId, String maskedPhone, String avatar, boolean passwordSet, boolean registered) { }
-    public record MeResponse(UUID userId, String maskedPhone, String avatar, boolean passwordSet) { }
+    public record MeResponse(UUID userId, String maskedPhone, String avatar, boolean passwordSet, String role) { }
 }

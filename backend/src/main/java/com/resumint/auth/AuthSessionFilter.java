@@ -30,9 +30,10 @@ final class AuthSessionFilter extends OncePerRequestFilter {
         if (token != null) {
             Instant now = clock.instant();
             repository.sessionByTokenHash(SecretDigests.sha256(token), now).ifPresent(session -> {
-                AuthPrincipal principal = new AuthPrincipal(session.userId(), session.sessionId(), PhoneNumbers.mask(session.phone()));
+                AuthPrincipal principal = new AuthPrincipal(session.userId(), session.sessionId(), PhoneNumbers.mask(session.phone()), session.role());
                 SecurityContextHolder.getContext().setAuthentication(
-                        new UsernamePasswordAuthenticationToken(principal, session.csrfHash(), java.util.List.of()));
+                        new UsernamePasswordAuthenticationToken(principal, session.csrfHash(),
+                                java.util.List.of(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_" + session.role()))));
                 repository.touchSession(session.sessionId(), now);
             });
         }

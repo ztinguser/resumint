@@ -33,6 +33,7 @@ class SecurityConfiguration {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/sms-code", "/api/auth/sms-login", "/api/auth/password-login", "/api/auth/password-reset").permitAll()
                         .requestMatchers("/api/templates/favorites", "/api/templates/*/favorite").authenticated()
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.GET,"/api/templates/**").permitAll()
                         .requestMatchers("/api/exports/**", "/api/health", "/api/openapi.json", "/error").permitAll()
                         .anyRequest().authenticated())

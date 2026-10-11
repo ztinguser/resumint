@@ -15,16 +15,16 @@ public class AuthRepository {
     AuthRepository(JdbcTemplate jdbc) { this.jdbc = jdbc; }
 
     Optional<UserRow> userByPhoneHash(String phoneHash) {
-        return jdbc.query("SELECT id,phone_e164,password_hash,avatar,created_at,last_login_at FROM users WHERE phone_lookup_hash=?",
+        return jdbc.query("SELECT id,phone_e164,password_hash,avatar,role,created_at,last_login_at FROM users WHERE phone_lookup_hash=?",
                 (rs, row) -> new UserRow(UUID.fromString(rs.getString("id")), rs.getString("phone_e164"),
-                        rs.getString("password_hash"), rs.getString("avatar"), instant(rs, "created_at"), instant(rs, "last_login_at")), phoneHash)
+                        rs.getString("password_hash"), rs.getString("avatar"), rs.getString("role"), instant(rs, "created_at"), instant(rs, "last_login_at")), phoneHash)
                 .stream().findFirst();
     }
 
     Optional<UserRow> userById(UUID id) {
-        return jdbc.query("SELECT id,phone_e164,password_hash,avatar,created_at,last_login_at FROM users WHERE id=?",
+        return jdbc.query("SELECT id,phone_e164,password_hash,avatar,role,created_at,last_login_at FROM users WHERE id=?",
                 (rs, row) -> new UserRow(UUID.fromString(rs.getString("id")), rs.getString("phone_e164"),
-                        rs.getString("password_hash"), rs.getString("avatar"), instant(rs, "created_at"), instant(rs, "last_login_at")), id.toString())
+                        rs.getString("password_hash"), rs.getString("avatar"), rs.getString("role"), instant(rs, "created_at"), instant(rs, "last_login_at")), id.toString())
                 .stream().findFirst();
     }
 
@@ -33,7 +33,7 @@ public class AuthRepository {
         try {
             jdbc.update("INSERT INTO users(id,phone_e164,phone_lookup_hash,created_at,updated_at,last_login_at) VALUES(?,?,?,?,?,?)",
                     id.toString(), phone, phoneHash, at(now), at(now), at(now));
-            return new UserRow(id, phone, null, "DEFAULT", now, now);
+            return new UserRow(id, phone, null, "DEFAULT", "USER", now, now);
         } catch (DuplicateKeyException duplicate) {
             return userByPhoneHash(phoneHash).orElseThrow(() -> duplicate);
         }
@@ -142,9 +142,9 @@ public class AuthRepository {
     }
 
     Optional<SessionUser> sessionByTokenHash(String hash, Instant now) {
-        return jdbc.query("SELECT s.id,s.user_id,s.csrf_hash,s.expires_at,u.phone_e164 FROM auth_sessions s JOIN users u ON u.id=s.user_id WHERE s.token_hash=? AND s.revoked_at IS NULL AND s.expires_at>?",
+        return jdbc.query("SELECT s.id,s.user_id,s.csrf_hash,s.expires_at,u.phone_e164,u.role FROM auth_sessions s JOIN users u ON u.id=s.user_id WHERE s.token_hash=? AND s.revoked_at IS NULL AND s.expires_at>?",
                 (rs, row) -> new SessionUser(UUID.fromString(rs.getString("id")), UUID.fromString(rs.getString("user_id")),
-                        rs.getString("csrf_hash"), instant(rs, "expires_at"), rs.getString("phone_e164")), hash, at(now)).stream().findFirst();
+                        rs.getString("csrf_hash"), instant(rs, "expires_at"), rs.getString("phone_e164"), rs.getString("role")), hash, at(now)).stream().findFirst();
     }
 
     void touchSession(UUID id, Instant now) { jdbc.update("UPDATE auth_sessions SET last_seen_at=? WHERE id=?", at(now), id.toString()); }
@@ -175,11 +175,11 @@ public class AuthRepository {
         Timestamp value = rs.getTimestamp(column); return value == null ? null : value.toInstant();
     }
 
-    record UserRow(UUID id, String phone, String passwordHash, String avatar, Instant createdAt, Instant lastLoginAt) { }
+    record UserRow(UUID id, String phone, String passwordHash, String avatar, String role, Instant createdAt, Instant lastLoginAt) { }
     record AttemptRow(UUID id, String purpose, String phoneHash, String maskedPhone, String sourceHash, String ipHash,
                       String deviceHash, String sessionHash, String provider,
                       String outId, String status, int failureCount, Instant createdAt, Instant expiresAt) { }
     record SessionTokens(UUID id, String token, String csrfToken, Instant expiresAt) { }
-    record SessionUser(UUID sessionId, UUID userId, String csrfHash, Instant expiresAt, String phone) { }
+    record SessionUser(UUID sessionId, UUID userId, String csrfHash, Instant expiresAt, String phone, String role) { }
     record DeviceToken(String token, Instant expiresAt) { }
 }

@@ -22,6 +22,11 @@ public final class TemplateController {
         if(row==null) throw new com.resumint.web.ApiException(org.springframework.http.HttpStatus.NOT_FOUND,"TEMPLATE_NOT_FOUND","模板不存在或不可用于新建");
         return ResponseEntity.ok().cacheControl(CacheControl.noCache()).body(response(row));
     }
+    @GetMapping("/{id}/versions/{version}") public ResponseEntity<TemplateResponse> version(@PathVariable String id,@PathVariable int version) {
+        TemplateMapper.TemplateRecord row=mapper.findPublishedVersion(id,version);
+        if(row==null) throw new com.resumint.web.ApiException(org.springframework.http.HttpStatus.NOT_FOUND,"TEMPLATE_VERSION_NOT_FOUND","模板版本不存在");
+        return ResponseEntity.ok().cacheControl(CacheControl.maxAge(java.time.Duration.ofDays(365)).cachePublic().immutable()).body(response(row));
+    }
     private TemplateResponse response(TemplateMapper.TemplateRecord row) {
         return new TemplateResponse(row.id(),row.name(),row.category(),read(row.tags()),row.version(),row.schemaVersion(),read(row.configJson()));
     }
