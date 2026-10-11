@@ -8,7 +8,7 @@ import type { RenderBlock } from "./pagination";
 type EditableKey = "fullName"|"headline"|"contactTitle"|"email"|"phone"|"location";
 type Props = {
   document:ResumeDocument; editable?:boolean; printBlocks?:RenderBlock[]; pageNumber?:number;
-  selectedSectionId?:string; selectedElementId?:string;
+  selectedSectionId?:string; selectedElementId?:string; onClearSelection?:()=>void;
   onSelectSection?:(id:string)=>void; onSelectElement?:(id:string,label:string)=>void;
   onProfileChange?:(key:EditableKey,value:string)=>void; onWebsiteChange?:(value:string)=>void;
   onContactChange?:(id:string,key:"label"|"value",value:string)=>void; onAddContact?:()=>void; onDeleteContact?:(id:string)=>void;
@@ -42,16 +42,18 @@ const moduleOptions:Array<{type:ResumeSection["type"];label:string}>=[{type:"exp
 
 function Section({document,section,editable,selected,selectedElementId,onSelect,onSelectElement,onChange,onItemChange,onAddItem,onDeleteItem,onAddSection,onDeleteSection,onMoveItem,onMoveSection}:{document:ResumeDocument;section:ResumeSection;editable?:boolean;selected?:boolean;selectedElementId?:string;onSelect?:()=>void;onSelectElement?:(id:string,label:string)=>void;onChange?:(value:string)=>void;onItemChange?:(item:ResumeItem,key:"title"|"subtitle"|"date"|"summary",value:string)=>void;onAddItem?:(afterItemId?:string)=>void;onDeleteItem?:(itemId:string)=>void;onAddSection?:(type:ResumeSection["type"])=>void;onDeleteSection?:()=>void;onMoveItem?:(fromId:string,toId:string)=>void;onMoveSection?:(fromId:string,toId:string)=>void}){
   const [dragging,setDragging]=useState<string|null>(null); const [dragTarget,setDragTarget]=useState<string|null>(null); const [moduleMenuOpen,setModuleMenuOpen]=useState(false);
+  const selectedItemId=section.items.find(item=>selectedElementId?.startsWith(`item.${item.id}.`))?.id;
+  const hasSelectedDescendant=selectedElementId===`section.${section.id}.title`||!!selectedItemId;
   const findTarget=(event:React.PointerEvent,selector:string,attribute:string)=>window.document.elementFromPoint(event.clientX,event.clientY)?.closest(selector)?.getAttribute(attribute)??null;
   const blocked=(event:React.PointerEvent)=>(event.target as HTMLElement).closest("button,.direct-editable,[contenteditable=true]");
   const startSection=(event:React.PointerEvent)=>{if(!editable||blocked(event))return;event.currentTarget.setPointerCapture(event.pointerId);setDragging(section.id);};
   const moveSection=(event:React.PointerEvent)=>{if(dragging===section.id)setDragTarget(findTarget(event,"[data-section-id]","data-section-id"));};
   const endSection=(event:React.PointerEvent)=>{if(dragging!==section.id)return;const target=findTarget(event,"[data-section-id]","data-section-id");if(target&&target!==section.id)onMoveSection?.(section.id,target);setDragging(null);setDragTarget(null);};
   const text=(id:string,value:string,label:string,onCommit:(value:string)=>void,className?:string,multiline=false)=><EditableText document={document} elementId={id} selected={selectedElementId===id} onSelect={onSelectElement} value={value} label={label} onCommit={onCommit} className={className} multiline={multiline}/>;
-  return <section data-section-id={section.id} className={`general-section ${selected?"is-selected":""} ${dragging?"is-dragging":""} ${dragTarget===section.id?"is-drop-target":""}`} onClick={onSelect} onPointerDown={startSection} onPointerMove={moveSection} onPointerUp={endSection}>
+  return <section data-section-id={section.id} className={`general-section ${selected?"is-selected":""} ${hasSelectedDescendant?"has-selected-descendant":""} ${dragging?"is-dragging":""} ${dragTarget===section.id?"is-drop-target":""}`} onClick={event=>{event.stopPropagation();onSelect?.();}} onPointerDown={startSection} onPointerMove={moveSection} onPointerUp={endSection}>
     {editable&&<span className="canvas-grip" role="button" tabIndex={0} aria-label={`拖动${section.title}排序`} title="拖动排序">⠿</span>}
     {text(`section.${section.id}.title`,section.title,"分区标题",value=>onChange?.(value),"general-section-title")}
-    <div className="general-section-items">{section.items.map(item=><article data-item-id={item.id} className={`general-entry ${dragTarget===item.id?"is-drop-target":""}`} key={item.id} onPointerDown={event=>{if(!editable||blocked(event))return;event.stopPropagation();event.currentTarget.setPointerCapture(event.pointerId);setDragging(item.id);}} onPointerMove={event=>{if(dragging===item.id){event.stopPropagation();setDragTarget(findTarget(event,"[data-item-id]","data-item-id"));}}} onPointerUp={event=>{if(dragging===item.id){event.stopPropagation();const target=findTarget(event,"[data-item-id]","data-item-id");if(target&&target!==item.id)onMoveItem?.(item.id,target);setDragging(null);setDragTarget(null);}}}>
+    <div className="general-section-items">{section.items.map(item=><article data-item-id={item.id} className={`general-entry ${selectedItemId===item.id?"is-selected":""} ${dragTarget===item.id?"is-drop-target":""}`} key={item.id} onPointerDown={event=>{if(!editable||blocked(event))return;event.stopPropagation();event.currentTarget.setPointerCapture(event.pointerId);setDragging(item.id);}} onPointerMove={event=>{if(dragging===item.id){event.stopPropagation();setDragTarget(findTarget(event,"[data-item-id]","data-item-id"));}}} onPointerUp={event=>{if(dragging===item.id){event.stopPropagation();const target=findTarget(event,"[data-item-id]","data-item-id");if(target&&target!==item.id)onMoveItem?.(item.id,target);setDragging(null);setDragTarget(null);}}}>
       {editable&&<span className="entry-grip" aria-hidden>⠿</span>}
       {(section.type==="experience"||section.type==="education"||section.type==="project")&&<div className="general-entry-heading"><div>{text(`item.${item.id}.title`,item.title,"条目名称",value=>onItemChange?.(item,"title",value),"general-entry-title")}{item.subtitle&&text(`item.${item.id}.subtitle`,item.subtitle,"角色或专业",value=>onItemChange?.(item,"subtitle",value),"general-entry-subtitle")}</div>{item.date&&text(`item.${item.id}.date`,item.date,"日期",value=>onItemChange?.(item,"date",value),"general-entry-date")}</div>}
       {section.type!=="experience"&&section.type!=="education"&&section.type!=="project"&&item.title&&text(`item.${item.id}.title`,item.title,"条目名称",value=>onItemChange?.(item,"title",value),"general-entry-title")}
@@ -67,7 +69,7 @@ export function GeneralTemplatePage(props:Props){
   const {document,editable,selectedSectionId,selectedElementId,pageNumber=1,printBlocks}=props; const profile=document.profile;
   const intro=document.sections.find(section=>section.id==="general-profile"&&section.visible); const body=document.sections.filter(section=>section.id!=="general-profile"&&section.visible); const profileItem=intro?.items[0];
   const text=(id:string,value:string,label:string,onCommit:(value:string)=>void,className?:string,multiline=false)=><EditableText document={document} elementId={id} selected={selectedElementId===id} onSelect={props.onSelectElement} value={value} label={label} onCommit={onCommit} className={className} multiline={multiline}/>;
-  return <article className={`resume-page general-template-page ${editable?"is-editable":"is-print-page"}`} style={themeVariables(document)} data-page={pageNumber}>
+  return <article className={`resume-page general-template-page ${editable?"is-editable":"is-print-page"}`} style={themeVariables(document)} data-page={pageNumber} onClick={editable?props.onClearSelection:undefined}>
     {pageNumber===1?<><header className="general-header">{profile.portrait&&<div className="general-avatar">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={profile.portrait.src} alt={profile.portrait.alt}/>

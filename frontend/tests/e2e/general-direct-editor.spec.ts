@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 
 test("general template supports module insertion, consistent contacts, and element styling", async ({ page }) => {
   await page.goto("/editor?template=general-verdant&qa=direct-editor");
+  await expect(page.locator(".general-section.is-selected")).toHaveCount(0, { timeout: 2_000 });
 
   const profileTitle = page.getByRole("textbox", { name: "个人简介标题，双击编辑" });
   const contactTitle = page.getByRole("textbox", { name: "联系方式标题，双击编辑" });
@@ -15,6 +16,12 @@ test("general template supports module insertion, consistent contacts, and eleme
   await contactTitle.press("Enter");
   await expect(profileTitle).toHaveText("关于我");
   await expect(contactTitle).toHaveText("联系我");
+
+  const initialEducationSection = page.locator('[data-section-id="general-education"]');
+  await page.getByRole("button", { name: "拖动教育经历排序" }).click();
+  await expect(initialEducationSection).toHaveClass(/is-selected/);
+  await page.locator(".general-avatar").click();
+  await expect(page.locator(".general-section.is-selected")).toHaveCount(0);
 
   await page.getByRole("button", { name: "在工作经历后新增模块" }).click();
   await page.getByRole("menuitem", { name: "项目经历" }).click();
@@ -48,6 +55,14 @@ test("general template supports module insertion, consistent contacts, and eleme
 
   const schoolName = page.locator('[data-element-id="item.general-education-1.title"]');
   await schoolName.click();
+  const educationSection = page.locator('[data-section-id="general-education"]');
+  const educationItem = page.locator('[data-item-id="general-education-1"]');
+  await expect(educationSection).not.toHaveClass(/is-selected/);
+  await expect(educationSection).toHaveClass(/has-selected-descendant/);
+  await expect(educationSection.getByRole("button", { name: "在教育经历后新增模块" })).toHaveCSS("opacity", "0");
+  await expect(educationSection.getByRole("button", { name: "删除模块 教育经历" })).toHaveCSS("opacity", "0");
+  await expect(educationItem).toHaveClass(/is-selected/);
+  await expect(educationItem.getByRole("button", { name: "在江南大学后新增一项" })).toHaveCSS("opacity", "1");
   await expect(page.getByRole("heading", { name: "条目名称" })).toBeVisible();
   await expect(page.getByLabel("元素字体系列")).toBeVisible();
   await expect(page.getByLabel("元素文字颜色")).toBeVisible();
