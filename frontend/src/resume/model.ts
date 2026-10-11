@@ -30,6 +30,7 @@ export type ResumeDocument = {
   template: { id: string; version: number };
   locale: string;
   elementStyles?: Record<string, ElementStyle>;
+  hiddenElementIds?: string[];
   profile: {
     fullName: string;
     headline: string;

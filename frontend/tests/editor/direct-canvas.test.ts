@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest";
 import { createGeneralDocument } from "../../src/resume/templates/general";
 import { addContact, duplicateSectionAfter, elementStyleCss, insertItemAfter, moveById, removeById, themeVariables } from "../../src/features/editor/direct-canvas";
+import {hideElement,isElementVisible}from"../../src/resume/element-visibility";
 import { paginateGeneralResume } from "../../src/resume/general-pagination";
 
 describe("direct resume canvas", () => {
@@ -34,8 +35,9 @@ describe("direct resume canvas", () => {
     source.items[0].fields=[{id:"source-field",label:"地点",type:"short-text",value:"上海"}];
     source.items[0].richText=[{id:"source-block",type:"paragraph",spans:[{text:"完整内容"}]}];
     document.elementStyles={"section.general-experience.title":{color:"#123456"},"item.general-work-1.title":{fontSizePt:12}};
+    document.hiddenElementIds=["item.general-work-1.subtitle"];
     let id=0;
-    document.sections=duplicateSectionAfter(document.sections,"general-experience","section-copy",kind=>`${kind}-${++id}`,document.elementStyles);
+    document.sections=duplicateSectionAfter(document.sections,"general-experience","section-copy",kind=>`${kind}-${++id}`,document.elementStyles,document.hiddenElementIds);
     expect(document.sections.map(section=>section.id)).toEqual(["general-profile","general-education","general-experience","section-copy","general-summary"]);
     const copy=document.sections[3];
     expect(copy).toMatchObject({type:source.type,title:source.title,column:source.column,visible:source.visible});
@@ -45,6 +47,15 @@ describe("direct resume canvas", () => {
     expect(copy.items[0].richText?.[0].id).not.toBe(source.items[0].richText?.[0].id);
     expect(document.elementStyles["section.section-copy.title"]).toEqual({color:"#123456"});
     expect(document.elementStyles["item.item-1.title"]).toEqual({fontSizePt:12});
+    expect(document.hiddenElementIds).toContain("item.item-1.subtitle");
+  });
+
+  test("hides an individual element without invalidating its source content",()=>{
+    const document=createGeneralDocument();
+    hideElement(document,"item.general-summary-copy.title");
+    expect(isElementVisible(document,"item.general-summary-copy.title")).toBe(false);
+    expect(document.sections.find(section=>section.id==="general-summary")?.items[0].title).toBe("总结");
+    expect(paginateGeneralResume(document).flatMap(page=>page.main).find(block=>block.key==="general-summary-copy-heading")).toBeUndefined();
   });
 
   test("maps a selected element style to inline canvas properties", () => {

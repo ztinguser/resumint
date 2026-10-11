@@ -20,13 +20,14 @@ export function addContact(document:ResumeDocument,id:string):ResumeDocument{
   const next=structuredClone(document);(next.profile.contacts??=[]).push({id,label:"联系方式",value:"双击填写"});return next;
 }
 
-export function duplicateSectionAfter(sections:ResumeSection[],sourceId:string,sectionId:string,createId:(kind:"item"|"field"|"block")=>string,elementStyles?:Record<string,ElementStyle>):ResumeSection[]{
+export function duplicateSectionAfter(sections:ResumeSection[],sourceId:string,sectionId:string,createId:(kind:"item"|"field"|"block")=>string,elementStyles?:Record<string,ElementStyle>,hiddenElementIds?:string[]):ResumeSection[]{
   const index=sections.findIndex(section=>section.id===sourceId);
   if(index<0)return sections;
   const source=structuredClone(sections[index]);
   const idMap=new Map<string,string>([[`section.${source.id}.`,`section.${sectionId}.`]]);
   const section:ResumeSection={...source,id:sectionId,items:source.items.map(item=>{const id=createId("item");idMap.set(`item.${item.id}.`,`item.${id}.`);return {...item,id,fields:item.fields?.map(field=>{const fieldId=createId("field");idMap.set(`field.${field.id}.`,`field.${fieldId}.`);return {...field,id:fieldId};}),richText:item.richText?.map(block=>{const blockId=createId("block");idMap.set(`block.${block.id}.`,`block.${blockId}.`);return {...block,id:blockId};})};})};
   if(elementStyles)for(const[key,style]of Object.entries({...elementStyles}))for(const[from,to]of idMap)if(key.startsWith(from)){elementStyles[`${to}${key.slice(from.length)}`]=structuredClone(style);break;}
+  if(hiddenElementIds)for(const key of [...hiddenElementIds])for(const[from,to]of idMap)if(key.startsWith(from)){hiddenElementIds.push(`${to}${key.slice(from.length)}`);break;}
   return [...sections.slice(0,index+1),section,...sections.slice(index+1)];
 }
 

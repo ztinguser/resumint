@@ -20,4 +20,10 @@ describe("shared resume document contract", () => {
     expect(result.valid).toBe(false);
     expect(result.errors.length).toBeGreaterThanOrEqual(2);
   });
+
+  test("accepts persisted element visibility overrides",()=>{
+    const document=structuredClone(benchmarkFixtures[0].document);
+    document.hiddenElementIds=["item.work-experience.title","profile.email"];
+    expect(validateResumeDocument(document)).toMatchObject({valid:true,errors:[]});
+  });
 });

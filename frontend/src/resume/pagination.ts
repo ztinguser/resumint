@@ -1,4 +1,5 @@
 import type { LayoutIssueCode, ResumeDocument, ResumeItem, ResumeSection, RichTextBlock } from "./model";
+import { isElementVisible } from "./element-visibility";
 
 export type RenderBlock = {
   key: string;
@@ -27,11 +28,11 @@ const splitText = (text: string, limit: number): string[] => {
 
 const textUnits = (text: string, charsPerLine: number) => Math.max(2, Math.ceil(text.length / charsPerLine) * 1.45 + 0.8);
 
-function sectionBlocks(section: ResumeSection, charsPerLine: number): RenderBlock[] {
-  const blocks: RenderBlock[] = [{ key: `${section.id}-title`, kind: "section", text: section.title, units: 4 }];
+function sectionBlocks(document:ResumeDocument,section: ResumeSection, charsPerLine: number): RenderBlock[] {
+  const blocks: RenderBlock[] = isElementVisible(document,`section.${section.id}.title`)?[{ key: `${section.id}-title`, kind: "section", text: section.title, units: 4 }]:[];
   for (const item of section.items) {
-    blocks.push({ key: `${item.id}-heading`, kind: "item-heading", item, units: 4 });
-    for (const [index, text] of splitText(item.summary ?? "", charsPerLine * 5).entries()) {
+    if(["title","subtitle","date"].some(key=>isElementVisible(document,`item.${item.id}.${key}`)&&!!item[key as keyof ResumeItem]))blocks.push({ key: `${item.id}-heading`, kind: "item-heading", item, units: 4 });
+    for (const [index, text] of (isElementVisible(document,`item.${item.id}.summary`)?splitText(item.summary ?? "", charsPerLine * 5):[]).entries()) {
       blocks.push({ key: `${item.id}-summary-${index}`, kind: "paragraph", text, units: textUnits(text, charsPerLine) });
     }
     for (const [index, bullet] of (item.bullets ?? []).entries()) {
@@ -71,8 +72,8 @@ function pack(blocks: RenderBlock[], firstCapacity: number, continuationCapacity
 export function paginateResume(document: ResumeDocument, capacities?:{firstMain?:number;continuationMain?:number}): RenderPage[] {
   const visible = document.sections.filter((section) => section.visible);
   const twoColumn = document.layout.kind === "two-column";
-  const main = visible.filter((section) => section.column === "main").flatMap((section) => sectionBlocks(section, twoColumn ? 48 : 78));
-  const side = visible.filter((section) => section.column === "side").flatMap((section) => sectionBlocks(section, 30));
+  const main = visible.filter((section) => section.column === "main").flatMap((section) => sectionBlocks(document,section, twoColumn ? 48 : 78));
+  const side = visible.filter((section) => section.column === "side").flatMap((section) => sectionBlocks(document,section, 30));
   const mainPages = pack(main, capacities?.firstMain??(twoColumn ? 47 : 49), capacities?.continuationMain??(twoColumn ? 61 : 64));
   const sidePages = twoColumn ? pack(side, 47, 61) : [[]];
   const count = Math.max(mainPages.length, sidePages.length);

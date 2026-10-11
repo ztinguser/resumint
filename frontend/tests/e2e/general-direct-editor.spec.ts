@@ -83,6 +83,13 @@ test("general template supports module duplication, consistent contacts, and ele
   await expect(page.getByText("9.5 pt", { exact: true })).toBeVisible();
   await expect(page.getByText("0.5 mm", { exact: true })).toBeVisible();
 
+  const summaryItemTitle=page.locator('[data-element-id="item.general-summary-copy.title"]');
+  await summaryItemTitle.click();
+  await page.getByRole("button", { name: "删除元素 条目名称" }).click();
+  await expect(summaryItemTitle).toHaveCount(0);
+  await page.getByRole("button", { name: "撤销" }).click();
+  await expect(summaryItemTitle).toHaveText("总结");
+
   const downloadPromise = page.waitForEvent("download");
   await page.getByRole("button", { name: "导出 PDF" }).click();
   const download = await downloadPromise;

@@ -15,6 +15,7 @@ import {applyTemplateToDocument,type SwitchTemplate} from "./template-switch";
 import { GeneralTemplatePage } from "@/resume/GeneralTemplatePage";
 import { createGeneralDocument, GENERAL_TEMPLATE_ID } from "@/resume/templates/general";
 import {duplicateSectionAfter,insertItemAfter,moveById,removeById}from"./direct-canvas";
+import {hideElement}from"@/resume/element-visibility";
 import{paginateGeneralResume}from"@/resume/general-pagination";
 
 const sectionLabels: Record<ResumeSection["type"], string> = { experience: "工作经历", education: "教育经历", project: "项目经历", skills: "技能", custom: "自定义模块" };
@@ -140,10 +141,10 @@ export function GuestWorkbench({templateId,initialDraftId}:{templateId:string;in
   const moveDirectItem=(sectionId:string,fromId:string,toId:string)=>updateSection(sectionId,section=>{section.items=moveById(section.items,fromId,toId);});
   const addDirectContact=()=>{const id=newId("contact");commit(next=>{(next.profile.contacts??=[]).push({id,label:"联系方式",value:"双击填写"});});setSelectedElement({id:`contact.${id}.value`,label:"联系方式"});};
   const deleteDirectContact=(id:string)=>{commit(next=>{next.profile.contacts=removeById(next.profile.contacts??[],id);});setSelectedElement(null);};
-  const addDirectSection=(sourceSectionId:string)=>{const sectionId=newId("section");commit(next=>{next.sections=duplicateSectionAfter(next.sections,sourceSectionId,sectionId,kind=>newId(kind),next.elementStyles);});setSelectedSectionId(sectionId);setSelectedElement(null);};
+  const addDirectSection=(sourceSectionId:string)=>{const sectionId=newId("section");commit(next=>{next.sections=duplicateSectionAfter(next.sections,sourceSectionId,sectionId,kind=>newId(kind),next.elementStyles,next.hiddenElementIds);});setSelectedSectionId(sectionId);setSelectedElement(null);};
   const deleteDirectSection=(sectionId:string)=>{commit(next=>{next.sections=removeById(next.sections,sectionId);});setSelectedSectionId("");setSelectedElement(null);};
   const updateElementStyle=(id:string,key:keyof ElementStyle,value:ElementStyle[keyof ElementStyle])=>commit(next=>{const styles=next.elementStyles??={};styles[id]={...(styles[id]??{}),[key]:value};});
-  const resetElementStyle=(id:string)=>commit(next=>{if(next.elementStyles)delete next.elementStyles[id];});
+  const resetElementStyle=(id:string,action?:"delete")=>{if(action==="delete"){commit(next=>hideElement(next,id));setSelectedElement(null);return;}commit(next=>{if(next.elementStyles)delete next.elementStyles[id];});};
 
   return <main className="workbench">
     <header className="workbench-topbar">
@@ -195,14 +196,15 @@ export function GuestWorkbench({templateId,initialDraftId}:{templateId:string;in
   </main>;
 }
 
-function ElementStylePanel({document,elementId,update,reset}:{document:ResumeDocument;elementId:string;update:(id:string,key:keyof ElementStyle,value:ElementStyle[keyof ElementStyle])=>void;reset:(id:string)=>void}){
+function ElementStylePanel({document,elementId,update,reset}:{document:ResumeDocument;elementId:string;update:(id:string,key:keyof ElementStyle,value:ElementStyle[keyof ElementStyle])=>void;reset:(id:string,action?:"delete")=>void}){
   const style=document.elementStyles?.[elementId]??{};
   const fontFamily=style.fontFamily??document.layout.theme.fontFamily;
   const fontSize=style.fontSizePt??document.layout.theme.fontSizePt??9;
   const color=style.color??document.layout.theme.accentColor;
   const lineHeight=style.lineHeight??document.layout.theme.lineHeight??1.48;
   const spacing=style.spacingMm??0;
-  return <div className="element-style-panel"><div className="property-title"><h2>元素样式</h2><button onClick={()=>reset(elementId)}>恢复默认</button></div><label>字体系列<select aria-label="元素字体系列" value={fontFamily} onChange={event=>update(elementId,"fontFamily",event.target.value)}><option>Microsoft YaHei</option><option>Arial</option><option>SimSun</option></select></label><label>文字颜色<input aria-label="元素文字颜色" type="color" value={color} onInput={event=>update(elementId,"color",event.currentTarget.value)}/></label><label>字号 <output>{fontSize} pt</output><input aria-label="元素字号" type="range" min="6" max="36" step="0.5" value={fontSize} onInput={event=>update(elementId,"fontSizePt",Number(event.currentTarget.value))}/></label><label>行高 <output>{lineHeight}</output><input aria-label="元素行高" type="range" min="1" max="2.4" step="0.05" value={lineHeight} onInput={event=>update(elementId,"lineHeight",Number(event.currentTarget.value))}/></label><label>下方间距 <output>{spacing} mm</output><input aria-label="元素下方间距" type="range" min="0" max="20" step="0.5" value={spacing} onInput={event=>update(elementId,"spacingMm",Number(event.currentTarget.value))}/></label></div>;
+  const deleteLabel=elementId.startsWith("section.")?"分区标题":elementId.endsWith(".title")?"条目名称":elementId.endsWith(".subtitle")?"角色或专业":elementId.endsWith(".date")?"日期":elementId.endsWith(".summary")?"描述":"文字";
+  return <div className="element-style-panel"><div className="property-title"><h2>元素样式</h2><span><button onClick={()=>reset(elementId)}>恢复默认</button><button className="danger" aria-label={`删除元素 ${deleteLabel}`} onClick={()=>reset(elementId,"delete")}>删除</button></span></div><label>字体系列<select aria-label="元素字体系列" value={fontFamily} onChange={event=>update(elementId,"fontFamily",event.target.value)}><option>Microsoft YaHei</option><option>Arial</option><option>SimSun</option></select></label><label>文字颜色<input aria-label="元素文字颜色" type="color" value={color} onInput={event=>update(elementId,"color",event.currentTarget.value)}/></label><label>字号 <output>{fontSize} pt</output><input aria-label="元素字号" type="range" min="6" max="36" step="0.5" value={fontSize} onInput={event=>update(elementId,"fontSizePt",Number(event.currentTarget.value))}/></label><label>行高 <output>{lineHeight}</output><input aria-label="元素行高" type="range" min="1" max="2.4" step="0.05" value={lineHeight} onInput={event=>update(elementId,"lineHeight",Number(event.currentTarget.value))}/></label><label>下方间距 <output>{spacing} mm</output><input aria-label="元素下方间距" type="range" min="0" max="20" step="0.5" value={spacing} onInput={event=>update(elementId,"spacingMm",Number(event.currentTarget.value))}/></label></div>;
 }
 
 function DecorationPanel({document,selectedId,select,commit}:{document:ResumeDocument;selectedId:string;select:(id:string)=>void;commit:(mutate:(next:ResumeDocument)=>void)=>void}) {
