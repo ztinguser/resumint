@@ -2,6 +2,7 @@ package com.resumint.auth;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -14,7 +15,9 @@ import org.springframework.http.HttpMethod;
 @Configuration
 class SecurityConfiguration {
     @Bean PasswordEncoder passwordEncoder() { return new BCryptPasswordEncoder(12); }
-    @Bean SecurityFilterChain securityFilterChain(HttpSecurity http, AuthSessionFilter sessionFilter, SessionCsrfFilter csrfFilter) throws Exception {
+    @Bean
+    @Profile("!worker")
+    SecurityFilterChain securityFilterChain(HttpSecurity http, AuthSessionFilter sessionFilter, SessionCsrfFilter csrfFilter) throws Exception {
         return http
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
