@@ -7,6 +7,8 @@ export function moveById<T extends {id:string}>(items:T[],sourceId:string,target
   const next=[...items];const[moved]=next.splice(from,1);next.splice(to,0,moved);return next;
 }
 
+export function removeById<T extends {id:string}>(items:T[],id:string):T[]{return items.filter(item=>item.id!==id);}
+
 export function insertItemAfter(items:ResumeItem[],afterId:string|undefined,id:string):ResumeItem[]{
   const source=items.find(item=>item.id===afterId)??items.at(-1);
   const next:ResumeItem=source?{...structuredClone(source),id,title:`${source.title}（新增）`}:{id,title:"新增内容",summary:"双击这里填写内容。"};

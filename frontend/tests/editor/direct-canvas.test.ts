@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 import { createGeneralDocument } from "../../src/resume/templates/general";
-import { addContact, elementStyleCss, insertItemAfter, insertSectionAfter, moveById, themeVariables } from "../../src/features/editor/direct-canvas";
+import { addContact, elementStyleCss, insertItemAfter, insertSectionAfter, moveById, removeById, themeVariables } from "../../src/features/editor/direct-canvas";
 import { paginateGeneralResume } from "../../src/resume/general-pagination";
 
 describe("direct resume canvas", () => {
@@ -8,6 +8,11 @@ describe("direct resume canvas", () => {
     const document=createGeneralDocument();
     document.sections=moveById(document.sections,"general-education","general-experience");
     expect(document.sections.map(section=>section.id)).toEqual(["general-profile","general-experience","general-education","general-summary"]);
+  });
+
+  test("removes only the requested stable id", () => {
+    const items=createGeneralDocument().sections.find(section=>section.id==="general-education")!.items;
+    expect(removeById(items,"general-education-1").map(item=>item.id)).toEqual(["general-education-2"]);
   });
 
   test("inserts a copy immediately after an entry", () => {

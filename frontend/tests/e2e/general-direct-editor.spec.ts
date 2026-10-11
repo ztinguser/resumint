@@ -29,8 +29,22 @@ test("general template supports module insertion, consistent contacts, and eleme
   await expect(contacts).toHaveCount(4);
   await page.getByRole("button", { name: "新增联系方式" }).click();
   await expect(contacts).toHaveCount(5);
-  await expect(contacts.last()).toHaveText("双击填写");
+  await expect(contacts.last().getByRole("textbox", { name: "联系方式，双击编辑" })).toHaveText("双击填写");
   await expect(contacts.last()).not.toContainText("其他");
+  await page.getByRole("button", { name: "删除联系方式 双击填写" }).click();
+  await expect(contacts).toHaveCount(4);
+  await page.getByRole("button", { name: "撤销" }).click();
+  await expect(contacts).toHaveCount(5);
+
+  await page.getByRole("button", { name: "删除条目 江南大学" }).click();
+  await expect(page.getByText("江南大学", { exact: true })).toHaveCount(0);
+  await page.getByRole("button", { name: "撤销" }).click();
+  await expect(page.getByText("江南大学", { exact: true })).toHaveCount(1);
+
+  await page.getByRole("button", { name: "删除模块 项目经历" }).click();
+  await expect(page.locator(".general-section-title")).toHaveText(["教育经历", "工作经历", "个人总结"]);
+  await page.getByRole("button", { name: "撤销" }).click();
+  await expect(page.locator(".general-section-title")).toHaveText(["教育经历", "工作经历", "项目经历", "个人总结"]);
 
   const schoolName = page.locator('[data-element-id="item.general-education-1.title"]');
   await schoolName.click();
