@@ -3,6 +3,19 @@ import { expect, test } from "@playwright/test";
 test("general template supports module insertion, consistent contacts, and element styling", async ({ page }) => {
   await page.goto("/editor?template=general-verdant&qa=direct-editor");
 
+  const profileTitle = page.getByRole("textbox", { name: "个人简介标题，双击编辑" });
+  const contactTitle = page.getByRole("textbox", { name: "联系方式标题，双击编辑" });
+  await expect(profileTitle).toHaveCount(1, { timeout: 2_000 });
+  await expect(contactTitle).toHaveCount(1, { timeout: 2_000 });
+  await profileTitle.dblclick();
+  await profileTitle.fill("关于我");
+  await profileTitle.press("Enter");
+  await contactTitle.dblclick();
+  await contactTitle.fill("联系我");
+  await contactTitle.press("Enter");
+  await expect(profileTitle).toHaveText("关于我");
+  await expect(contactTitle).toHaveText("联系我");
+
   await page.getByRole("button", { name: "在工作经历后新增模块" }).click();
   await page.getByRole("menuitem", { name: "项目经历" }).click();
   await expect(page.locator(".general-section-title")).toHaveText([

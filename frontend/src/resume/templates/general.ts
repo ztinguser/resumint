@@ -13,6 +13,7 @@ export function createGeneralDocument(): ResumeDocument {
     profile: {
       fullName: "林清远",
       headline: "产品设计师",
+      contactTitle: "联系方式",
       email: "qingyuan.lin@example.com",
       phone: "138 0000 2026",
       location: "上海",

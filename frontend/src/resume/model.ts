@@ -33,6 +33,7 @@ export type ResumeDocument = {
   profile: {
     fullName: string;
     headline: string;
+    contactTitle?: string;
     email: string;
     phone?: string;
     location?: string;

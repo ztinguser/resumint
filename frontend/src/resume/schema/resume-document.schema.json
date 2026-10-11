@@ -30,6 +30,7 @@
       "properties": {
         "fullName": { "$ref": "#/$defs/text" },
         "headline": { "$ref": "#/$defs/text" },
+        "contactTitle": { "$ref": "#/$defs/text" },
         "email": { "type": "string", "format": "email", "maxLength": 254 },
         "phone": { "$ref": "#/$defs/text" },
         "location": { "$ref": "#/$defs/text" },
