@@ -30,9 +30,12 @@ public final class PlaywrightPdfRenderer implements PdfRenderer {
         URI base = limits.printBaseUrl();
         String fixture = URLEncoder.encode(fixtureId, StandardCharsets.UTF_8);
         String target = base.resolve("/print?fixture=" + fixture).toString();
+        BrowserType.LaunchOptions launchOptions = new BrowserType.LaunchOptions().setHeadless(true);
+        String browserChannel = System.getenv("RESUMINT_PLAYWRIGHT_CHANNEL");
+        if (browserChannel != null && !browserChannel.isBlank()) launchOptions.setChannel(browserChannel);
 
         try (Playwright playwright = Playwright.create();
-             Browser browser = playwright.chromium().launch(new BrowserType.LaunchOptions().setHeadless(true));
+             Browser browser = playwright.chromium().launch(launchOptions);
              BrowserContext context = browser.newContext()) {
             context.route("**/*", route -> {
                 if (isTrusted(route.request().url(), base)) route.resume();
