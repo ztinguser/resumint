@@ -32,12 +32,8 @@
 .item-links { display: flex; flex-wrap: wrap; gap: 2mm 4mm; font-size: 8pt; margin: 1mm 0; }
 
 /* M5 formal-template candidates. They remain draft visuals until product approval. */
-.template-general-verdant .resume-page { background: #fcfdfb; }
-.template-general-verdant header { border-bottom-width: 2px; }
-.template-general-verdant h1 { letter-spacing: .04em; }
-.template-general-verdant .section-title { display: flex; align-items: center; gap: 3mm; border: 0; font-size: 10.5pt; letter-spacing: .12em; }
-.template-general-verdant .section-title::after { content: ""; height: 1px; background: #afc6c0; flex: 1; }
-.template-general-verdant .item-heading strong { font-weight: 650; }
+.template-general-verdant { padding-top: 18px; }
+.template-general-verdant .general-template-page { margin-bottom: 18px; }
 
 .template-business-ledger .resume-page { padding-top: 0 !important; }
 .template-business-ledger header { margin: 0 -16mm 7mm; padding: 12mm 16mm 7mm; min-height: 42mm; background: var(--accent); border: 0; color: white; }

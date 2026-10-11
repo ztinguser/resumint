@@ -12,6 +12,8 @@ import { LoginBubble } from "@/features/auth/LoginBubble";
 import { ApiError, apiFetch, currentUser, type CurrentUser } from "@/features/auth/auth-client";
 import { edited, initialSaveState, loadedSaved, saveFailed, saveStarted, saveSucceeded, type SaveState } from "./save-state";
 import {applyTemplateToDocument,type SwitchTemplate} from "./template-switch";
+import { GeneralTemplatePage } from "@/resume/GeneralTemplatePage";
+import { createGeneralDocument, GENERAL_TEMPLATE_ID } from "@/resume/templates/general";
 
 const sectionLabels: Record<ResumeSection["type"], string> = { experience: "工作经历", education: "教育经历", project: "项目经历", skills: "技能", custom: "自定义模块" };
 const newId = (prefix: string) => `${prefix}-${crypto.randomUUID()}`;
@@ -21,13 +23,13 @@ type PublicTemplate=SwitchTemplate;
 
 export function GuestWorkbench({templateId,initialDraftId}:{templateId:string;initialDraftId?:string}) {
   const router=useRouter();
-  const [history, dispatch] = useReducer(historyReducer, undefined, () => ({ past: [], present: createBenchmarkDocument(), future: [] }));
-  const [selectedSectionId, setSelectedSectionId] = useState("work-experience");
+  const [history, dispatch] = useReducer(historyReducer, undefined, () => ({ past: [], present: templateId===GENERAL_TEMPLATE_ID&&!initialDraftId?createGeneralDocument():createBenchmarkDocument(), future: [] }));
+  const [selectedSectionId, setSelectedSectionId] = useState(templateId===GENERAL_TEMPLATE_ID?"general-experience":"work-experience");
   const [selectedDecorationId, setSelectedDecorationId] = useState("header-divider");
   const [zoom, setZoom] = useState(.72);
   const [tab, setTab] = useState<"style" | "layout" | "decoration">("style");
   const [exportState, setExportState] = useState("导出 PDF");
-  const [templateReady, setTemplateReady] = useState(false);
+  const [templateReady, setTemplateReady] = useState(templateId===GENERAL_TEMPLATE_ID&&!initialDraftId);
   const [notice, setNotice] = useState<string | null>(null);
   const [dragDocument, setDragDocument] = useState<ResumeDocument | null>(null);
   const [user,setUser]=useState<CurrentUser|null>(null);
@@ -35,7 +37,7 @@ export function GuestWorkbench({templateId,initialDraftId}:{templateId:string;in
   const draftIdRef=useRef<string|undefined>(initialDraftId);
   const serverRevisionRef=useRef<number|null>(null);
   const saveInFlightRef=useRef(false);
-  const [documentTitle,setDocumentTitle]=useState("未命名简历");
+  const [documentTitle,setDocumentTitle]=useState(templateId===GENERAL_TEMPLATE_ID?"通用简历":"未命名简历");
   const [saveState,setSaveState]=useState<SaveState>(initialSaveState);
   const [conflict,setConflict]=useState<Draft|null>(null);
   const [compareConflict,setCompareConflict]=useState(false);
@@ -48,7 +50,7 @@ export function GuestWorkbench({templateId,initialDraftId}:{templateId:string;in
   const document = dragDocument ?? history.present;
   const selected = document.sections.find((section) => section.id === selectedSectionId) ?? document.sections[0];
   const issues = useMemo(() => describeLayoutIssues(document), [document]);
-  const pages = useMemo(() => paginateResume(document).length, [document]);
+  const pages = useMemo(() => document.template.id===GENERAL_TEMPLATE_ID?1:paginateResume(document).length, [document]);
 
   useEffect(() => {
     const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ""; };
@@ -61,6 +63,7 @@ export function GuestWorkbench({templateId,initialDraftId}:{templateId:string;in
 
   useEffect(() => {
     if(initialDraftId)return;
+    if(templateId===GENERAL_TEMPLATE_ID)return;
     let active=true;
     fetch(`/api/templates/${encodeURIComponent(templateId)}`,{cache:"no-store"}).then(async(response)=>{if(!response.ok)throw new Error("所选模板不可用");return response.json() as Promise<{id:string;version:number}>;}).then((template)=>{if(!active)return;const next=createBenchmarkDocument();next.template={id:template.id,version:template.version};dispatch({type:"commit",document:next});setTemplateReady(true);}).catch((error)=>{if(active)setNotice(error instanceof Error?error.message:"模板加载失败");});
     return()=>{active=false;};
@@ -126,6 +129,13 @@ export function GuestWorkbench({templateId,initialDraftId}:{templateId:string;in
   const websiteError=document.profile.website&&!/^https?:\/\//i.test(document.profile.website.href)?"链接需以 http:// 或 https:// 开头":"";
   const exporting=exportState.includes("…");
   const saveLabel=({unsaved:"未保存",saving:"保存中…",saved:"已保存",dirty:"有未保存更改",failed:"保存失败"} as const)[saveState.status];
+  const directCanvas=templateId===GENERAL_TEMPLATE_ID||document.template.id===GENERAL_TEMPLATE_ID;
+  const addDirectItem=(sectionId:string)=>updateSection(sectionId,section=>{
+    const source=section.items.at(-1);
+    const nextItem:ResumeItem=source?{...source,id:newId("item"),title:`${source.title}（新增）`,bullets:source.bullets?[...source.bullets]:undefined,links:source.links?.map(link=>({...link})),fields:source.fields?.map(field=>({...field,id:newId("field")})),richText:source.richText?.map(block=>({...block,id:newId("rich"),spans:block.spans.map(span=>({...span}))}))}:{id:newId("item"),title:`新的${sectionLabels[section.type]}`,summary:"双击这里填写内容。"};
+    section.items.push(nextItem);
+  });
+  const moveDirectSection=(fromId:string,toId:string)=>commit(next=>{const from=next.sections.findIndex(section=>section.id===fromId);const to=next.sections.findIndex(section=>section.id===toId);if(from>=0&&to>=0)next.sections=move(next.sections,from,to);});
 
   return <main className="workbench">
     <header className="workbench-topbar">
@@ -138,8 +148,8 @@ export function GuestWorkbench({templateId,initialDraftId}:{templateId:string;in
     {conflict&&<div className="dialog-backdrop"><section className="conflict-dialog" role="dialog" aria-label="版本冲突"><span className="eyebrow">HTTP 409</span><h2>服务器版本已更新</h2><p>本地工作副本仍完整保留。服务器当前为修订 {conflict.revision}，更新于 {new Date(conflict.updatedAt).toLocaleString()}。</p>{compareConflict&&<div className="conflict-compare"><div><strong>本地</strong><pre>{JSON.stringify(history.present.profile,null,2)}</pre></div><div><strong>服务器</strong><pre>{JSON.stringify(conflict.document.profile,null,2)}</pre></div></div>}<div className="dialog-actions"><button onClick={reloadConflict}>重新加载服务器版本</button><button onClick={()=>void saveDraft(true)}>本地另存为新草稿</button><button onClick={()=>setCompareConflict(true)}>查看差异并人工合并</button><button onClick={()=>setConflict(null)}>保留本地，稍后处理</button></div></section></div>}
     {logoutPrompt&&<div className="dialog-backdrop"><section className="conflict-dialog" role="dialog" aria-label="退出确认"><h2>还有未保存更改</h2><p>退出不会偷偷保存。请选择继续编辑、先手动保存，或放弃本次更改后退出。</p><div className="dialog-actions"><button onClick={()=>setLogoutPrompt(false)}>继续编辑</button><button onClick={async()=>{if(await saveDraft())await performLogout();}}>保存后退出</button><button className="danger" onClick={()=>void performLogout()}>放弃并退出</button></div></section></div>}
     {switchOpen&&<div className="dialog-backdrop"><section className="template-switch-dialog" role="dialog" aria-label="切换模板预览"><div className="switch-copy"><span className="eyebrow">先预览，后确认</span><h2>切换模板不会立即保存</h2><label>目标模板<select value={switchTarget?.id??""} onChange={event=>setSwitchTarget(templates.find(value=>value.id===event.target.value)??null)}>{templates.map(value=><option value={value.id} key={value.id}>{value.name} · v{value.version}</option>)}</select></label><div className="switch-impact"><h3>内容影响清单</h3><dl><dt>保留</dt><dd>个人信息、全部模块、重复经历、自定义字段</dd><dt>映射</dt><dd>主栏 / 侧栏按目标模板的栏目规则重新排布</dd><dt>重置</dt><dd>主题色、页边距、栏目和装饰改为目标模板默认值</dd><dt>不兼容</dt><dd>无；未知模块与字段使用通用兜底组件展示</dd></dl></div><p>确认后作为一次操作写入撤销历史；只有再次点击“保存”，云端草稿才绑定新版本。</p><div className="dialog-actions"><button className="primary" onClick={confirmTemplateSwitch}>确认切换</button><button onClick={()=>setSwitchOpen(false)}>取消，保持不变</button></div></div>{previewSwitched&&<div className="switch-preview"><div><ResumePrintDocument key={`${switchTarget?.id}-${switchTarget?.version}`} initialDocument={previewSwitched}/></div></div>}</section></div>}
-    <div className="workbench-grid">
-      <aside className="editor-panel">
+    <div className={`workbench-grid ${directCanvas?"direct-canvas":""}`}>
+      {!directCanvas&&<aside className="editor-panel">
         <div className="panel-heading"><div><span className="eyebrow">内容结构</span><h1>简历内容</h1></div><button onClick={() => { const id=newId("section"); commit((next)=>next.sections.push({id,type:"custom",title:"自定义模块",column:"main",visible:true,items:[]})); setSelectedSectionId(id); }}>＋ 模块</button></div>
         <section className="profile-editor"><h2>个人信息</h2><label>姓名<input aria-label="姓名" maxLength={120} value={document.profile.fullName} onChange={(event)=>commit((next)=>{next.profile.fullName=event.target.value||"未命名";})}/></label><label>职业标题<input aria-label="职业标题" maxLength={120} value={document.profile.headline} onChange={(event)=>commit((next)=>{next.profile.headline=event.target.value||"未填写";})}/></label><div className="two-inputs"><label>邮箱<input aria-label="邮箱" type="email" maxLength={254} aria-invalid={!!emailError} value={document.profile.email} onChange={(event)=>commit((next)=>{next.profile.email=event.target.value;})}/>{emailError&&<small className="field-error">{emailError}</small>}</label><label>电话<input aria-label="电话" maxLength={60} value={document.profile.phone??""} onChange={(event)=>commit((next)=>{next.profile.phone=event.target.value||undefined;})}/></label></div><label>所在地<input aria-label="所在地" maxLength={120} value={document.profile.location??""} onChange={(event)=>commit((next)=>{next.profile.location=event.target.value||undefined;})}/></label><label>个人链接<input aria-label="个人链接" maxLength={2048} aria-invalid={!!websiteError} value={document.profile.website?.href??""} onChange={(event)=>commit((next)=>{next.profile.website=event.target.value?{label:event.target.value,href:event.target.value}:undefined;})}/>{websiteError&&<small className="field-error">{websiteError}</small>}</label></section>
         <div className="module-list" aria-label="简历模块">
@@ -160,17 +170,18 @@ export function GuestWorkbench({templateId,initialDraftId}:{templateId:string;in
           </article>)}
           <button className="add-item" onClick={()=>updateSection(selected.id,(section)=>section.items.push({id:newId("item"),title:`新的${sectionLabels[section.type]}`}))}>＋ 添加条目</button>
         </section>}
-      </aside>
+      </aside>}
       <section className="preview-panel">
         <div className="preview-toolbar"><span>第 1 / {pages} 页</span><button onClick={()=>setZoom(Math.max(.45,zoom-.1))}>−</button><span>{Math.round(zoom*100)}%</span><button onClick={()=>setZoom(Math.min(1.1,zoom+.1))}>＋</button></div>
-        <div className="preview-scroll"><div className="preview-stage" style={{ width:`${210*3.7795*zoom}px`, height:`${297*3.7795*pages*zoom + Math.max(0,pages-1)*18*zoom}px` }}><div className="preview-scale" style={{ transform:`scale(${zoom})` }}><ResumePrintDocument initialDocument={document} key={JSON.stringify(document)} />{dragDocument&&<><i className="alignment-guide vertical"/><i className="alignment-guide horizontal"/></>}{document.layout.decorations.map((item)=><button aria-label={`拖动装饰 ${item.id}`} className={`decoration-handle ${selectedDecorationId===item.id?"selected":""}`} disabled={item.locked} key={item.id} style={{left:`${item.xMm}mm`,top:`${item.yMm}mm`,width:`${Math.max(item.widthMm,5)}mm`,height:`${Math.max(item.heightMm,5)}mm`}} onPointerDown={(event)=>beginDecorationDrag(event,item.id)} onPointerMove={moveDecoration} onPointerUp={endDecorationDrag} />)}</div></div></div>
+        <div className="preview-scroll"><div className="preview-stage" style={{ width:`${210*3.7795*zoom}px`, height:`${297*3.7795*pages*zoom + Math.max(0,pages-1)*18*zoom}px` }}><div className="preview-scale" style={{ transform:`scale(${zoom})` }}>{directCanvas?<GeneralTemplatePage document={document} editable selectedSectionId={selectedSectionId} onSelectSection={setSelectedSectionId} onProfileChange={(key,value)=>commit(next=>{next.profile[key]=value;})} onWebsiteChange={value=>commit(next=>{next.profile.website={label:value,href:next.profile.website?.href??"https://example.com"};})} onSectionChange={(sectionId,_key,value)=>updateSection(sectionId,section=>{section.title=value;})} onItemChange={(sectionId,itemId,key,value)=>updateItem(sectionId,itemId,item=>{item[key]=value;})} onAddItem={addDirectItem} onMoveSection={moveDirectSection}/>:<ResumePrintDocument initialDocument={document} key={JSON.stringify(document)} />}{!directCanvas&&<>{dragDocument&&<><i className="alignment-guide vertical"/><i className="alignment-guide horizontal"/></>}{document.layout.decorations.map((item)=><button aria-label={`拖动装饰 ${item.id}`} className={`decoration-handle ${selectedDecorationId===item.id?"selected":""}`} disabled={item.locked} key={item.id} style={{left:`${item.xMm}mm`,top:`${item.yMm}mm`,width:`${Math.max(item.widthMm,5)}mm`,height:`${Math.max(item.heightMm,5)}mm`}} onPointerDown={(event)=>beginDecorationDrag(event,item.id)} onPointerMove={moveDecoration} onPointerUp={endDecorationDrag} />)}</>}</div></div></div>
         <div className="layout-status"><strong>{pages} 页 A4</strong><span>{issues.length ? `${issues.length} 个排版问题` : "未发现排版问题"}</span>{issues.map((issue)=><button key={`${issue.code}-${issue.objectId}`} onClick={()=>setSelectedDecorationId(issue.objectId)}>{issue.code} · 第 {issue.page} 页 · {issue.objectId}</button>)}</div>
       </section>
-      <aside className="property-panel">
+      <aside className={`property-panel ${directCanvas?"direct-properties":""}`}>
+        {directCanvas?<div className="property-content"><span className="eyebrow">直接编辑</span><h2>{selected?.title??"页面样式"}</h2><p className="help">双击简历中的文字即可修改；拖动分区可以排序；悬停在分区右侧，点击 ＋ 添加同类内容。</p><h2>页面样式</h2><label>文字颜色<input type="color" value={document.layout.theme.accentColor} onChange={(event)=>commit(next=>{next.layout.theme.accentColor=event.target.value;})}/></label><label>正文字号 <output>{document.layout.theme.fontSizePt??8.5} pt</output><input type="range" min="8" max="11" step="0.5" value={document.layout.theme.fontSizePt??8.5} onChange={(event)=>commit(next=>{next.layout.theme.fontSizePt=Number(event.target.value);})}/></label><h2>头像</h2><label className="file-label">替换头像<input type="file" accept="image/png,image/jpeg,image/webp" onChange={(event)=>onPortrait(event.target.files?.[0])}/></label></div>:<>
         <div className="tabs"><button className={tab==="style"?"active":""} onClick={()=>setTab("style")}>样式</button><button className={tab==="layout"?"active":""} onClick={()=>setTab("layout")}>布局</button><button className={tab==="decoration"?"active":""} onClick={()=>setTab("decoration")}>装饰</button></div>
         {tab==="style"&&<div className="property-content"><h2>主题样式</h2><label>主题色<input type="color" value={document.layout.theme.accentColor} onChange={(event)=>commit((next)=>{next.layout.theme.accentColor=event.target.value;})}/></label><label>中文字体<select value={document.layout.theme.fontFamily} onChange={(event)=>commit((next)=>{next.layout.theme.fontFamily=event.target.value;})}><option>Arial</option><option>Microsoft YaHei</option><option>SimSun</option></select></label><label>正文字号 <output>{document.layout.theme.fontSizePt??8.5} pt</output><input type="range" min="8" max="13" step="0.5" value={document.layout.theme.fontSizePt??8.5} onChange={(event)=>commit((next)=>{next.layout.theme.fontSizePt=Number(event.target.value);})}/></label><label>正文行距 <output>{document.layout.theme.lineHeight??1.48}</output><input type="range" min="1.2" max="1.8" step="0.02" value={document.layout.theme.lineHeight??1.48} onChange={(event)=>commit((next)=>{next.layout.theme.lineHeight=Number(event.target.value);})}/></label><h2>头像图片</h2><label className="file-label">替换头像<input type="file" accept="image/png,image/jpeg,image/webp" onChange={(event)=>onPortrait(event.target.files?.[0])}/></label>{document.profile.portrait&&<><label>裁剪缩放 <output>{document.profile.portrait.cropScale?.toFixed(1)}×</output><input type="range" min="1" max="4" step="0.1" value={document.profile.portrait.cropScale??1} onChange={(event)=>commit((next)=>{next.profile.portrait!.cropScale=Number(event.target.value);})}/></label><button onClick={()=>commit((next)=>{delete next.profile.portrait;})}>移除头像</button></>}</div>}
         {tab==="layout"&&<div className="property-content"><h2>页面与栏目</h2><label>栏目<select value={document.layout.kind} onChange={(event)=>commit((next)=>{next.layout.kind=event.target.value as "single"|"two-column";})}><option value="single">单栏</option><option value="two-column">双栏</option></select></label><label>页边距 <output>{document.layout.page.marginMm} mm</output><input type="range" min="10" max="25" step="1" value={document.layout.page.marginMm} onChange={(event)=>commit((next)=>{next.layout.page.marginMm=Number(event.target.value);})}/></label><p className="help">A4（210 × 297 mm）· 自动分页续排</p></div>}
-        {tab==="decoration"&&<DecorationPanel document={document} selectedId={selectedDecorationId} select={setSelectedDecorationId} commit={commit}/>} 
+        {tab==="decoration"&&<DecorationPanel document={document} selectedId={selectedDecorationId} select={setSelectedDecorationId} commit={commit}/>}</>}
       </aside>
     </div>
   </main>;
