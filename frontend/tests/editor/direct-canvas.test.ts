@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 import { createGeneralDocument } from "../../src/resume/templates/general";
-import { addContact, insertItemAfter, moveById, themeVariables } from "../../src/features/editor/direct-canvas";
+import { addContact, elementStyleCss, insertItemAfter, insertSectionAfter, moveById, themeVariables } from "../../src/features/editor/direct-canvas";
 import { paginateGeneralResume } from "../../src/resume/general-pagination";
 
 describe("direct resume canvas", () => {
@@ -19,8 +19,21 @@ describe("direct resume canvas", () => {
 
   test("adds open-ended contact data without replacing fixed profile fields", () => {
     const document=addContact(createGeneralDocument(),"contact-extra");
-    expect(document.profile.contacts).toEqual([{id:"contact-extra",label:"其他",value:"双击填写"}]);
+    expect(document.profile.contacts).toEqual([{id:"contact-extra",label:"联系方式",value:"双击填写"}]);
     expect(document.profile.email).toBe("qingyuan.lin@example.com");
+  });
+
+  test("inserts a complete module after the selected module", () => {
+    const document=createGeneralDocument();
+    document.sections=insertSectionAfter(document.sections,"general-experience","project","project-new","project-item-new");
+    expect(document.sections.map(section=>section.id)).toEqual(["general-profile","general-education","general-experience","project-new","general-summary"]);
+    expect(document.sections[3]).toMatchObject({type:"project",title:"项目经历",items:[{id:"project-item-new"}]});
+  });
+
+  test("maps a selected element style to inline canvas properties", () => {
+    const document=createGeneralDocument();
+    document.elementStyles={"item.general-education-1.title":{fontFamily:"SimSun",fontSizePt:12,color:"#91452f",lineHeight:1.4,spacingMm:2}};
+    expect(elementStyleCss(document,"item.general-education-1.title")).toMatchObject({fontSize:"12pt",color:"#91452f",lineHeight:1.4,paddingBottom:"2mm"});
   });
 
   test("maps theme controls to live canvas variables", () => {
