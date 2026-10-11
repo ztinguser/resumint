@@ -7,9 +7,9 @@
 .decoration.circle { border-radius: 50%; }
 .decoration.divider { height: 1px !important; }
 .resume-page > header, .page-body { position: relative; z-index: 1; }
-.print-root header { min-height: 35mm; display: flex; align-items: center; gap: 7mm; border-bottom: 1.2px solid var(--accent); padding-bottom: 5mm; margin-bottom: 6mm; }
-.print-root header.continuation { min-height: 12mm; padding-bottom: 3mm; margin-bottom: 4mm; justify-content: space-between; }
-.print-root header.continuation h1 { font-size: 15pt; }
+.print-root .resume-page:not(.general-template-page) > header { min-height: 35mm; display: flex; align-items: center; gap: 7mm; border-bottom: 1.2px solid var(--accent); padding-bottom: 5mm; margin-bottom: 6mm; }
+.print-root .resume-page:not(.general-template-page) > header.continuation { min-height: 12mm; padding-bottom: 3mm; margin-bottom: 4mm; justify-content: space-between; }
+.print-root .resume-page:not(.general-template-page) > header.continuation h1 { font-size: 15pt; }
 .print-root h1 { margin: 0; font-size: 25pt; line-height: 1.1; color: var(--accent); }
 .headline { font-size: 11pt; margin: 2mm 0; }
 .contacts { display: flex; flex-wrap: wrap; gap: 2mm 5mm; font-size: 8.5pt; }
@@ -56,4 +56,5 @@
   body { background: white; }
   .print-root { padding: 0; }
   .resume-page { margin: 0; box-shadow: none; }
+  .template-general-verdant .general-template-page { margin: 0; }
 }

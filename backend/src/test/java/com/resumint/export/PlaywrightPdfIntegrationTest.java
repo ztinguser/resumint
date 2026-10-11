@@ -33,7 +33,7 @@ import tools.jackson.databind.ObjectMapper;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @EnabledIfSystemProperty(named = "resumint.pdf.it", matches = "true")
 class PlaywrightPdfIntegrationTest {
-    private static final URI PRINT_BASE = URI.create("http://127.0.0.1:3100");
+    private static final URI PRINT_BASE = URI.create("http://127.0.0.1:3200");
     private static final List<Fixture> FIXTURES = List.of(
             new Fixture("single-column", 1, List.of("林知夏", "工作经历", "同济大学"), List.of("https://example.com/portfolio", "https://example.com/case-study")),
             new Fixture("multi-column", 1, List.of("核心经历", "技能", "异步 PDF 验证"), List.of("https://example.com/portfolio")),
@@ -50,7 +50,7 @@ class PlaywrightPdfIntegrationTest {
     void startFrontend() throws Exception {
         Path frontendDirectory = Path.of("..").resolve("frontend").toAbsolutePath().normalize();
         Path next = frontendDirectory.resolve(Path.of("node_modules", "next", "dist", "bin", "next"));
-        frontend = new ProcessBuilder("node", next.toString(), "start", "--port", "3100")
+        frontend = new ProcessBuilder("node", next.toString(), "start", "--port", "3200")
                 .directory(frontendDirectory.toFile())
                 .redirectErrorStream(true)
                 .redirectOutput(ProcessBuilder.Redirect.DISCARD)
@@ -74,6 +74,17 @@ class PlaywrightPdfIntegrationTest {
         if (frontend == null) return;
         frontend.destroy();
         if (!frontend.waitFor(5, java.util.concurrent.TimeUnit.SECONDS)) frontend.destroyForcibly();
+    }
+
+    @Test
+    void generalTemplateHasNoBlankTrailingPage(@TempDir Path outputDirectory) throws Exception {
+        Path pdf=outputDirectory.resolve("general-default.pdf");
+        new PlaywrightPdfRenderer(ExportLimits.m1Defaults(PRINT_BASE)).renderFixture("general-default",pdf);
+        try(PDDocument document=Loader.loadPDF(pdf.toFile())){
+            assertThat(document.getNumberOfPages()).isEqualTo(1);
+            PDFTextStripper stripper=new PDFTextStripper();
+            assertThat(stripper.getText(document).replaceAll("\\s+","")).contains("林清远","个人简介","个人总结");
+        }
     }
 
     @Test

@@ -30,14 +30,31 @@ function EditableText({document,elementId,value,onCommit,onSelect,selected,class
   return <Tag ref={ref as never} style={elementStyleCss(document,elementId)} data-element-id={elementId} className={`${className??""} ${onCommit?"direct-editable":""} ${editing?"is-editing":""} ${selected?"is-element-selected":""}`} contentEditable={editing} suppressContentEditableWarning role={onCommit?"textbox":undefined} aria-label={onCommit?`${label}，双击编辑`:undefined} title={onCommit?"双击编辑":undefined} onClick={event=>{event.stopPropagation();onSelect?.(elementId,label);}} onDoubleClick={()=>{onSelect?.(elementId,label);if(onCommit)setEditing(true);}} onBlur={finish} onKeyDown={event=>{if(event.key==="Escape"){if(ref.current)ref.current.textContent=value;setEditing(false);}if(!multiline&&event.key==="Enter"){event.preventDefault();finish();}}}>{value}</Tag>;
 }
 
-function PrintBlocks({document,blocks}:{document:ResumeDocument;blocks:RenderBlock[]}){return <div className="general-print-blocks">{blocks.map(block=>{
+function PrintBlockContent({document,block}:{document:ResumeDocument;block:RenderBlock}){
   if(block.kind==="section"){const id=block.key.replace(/-title$/,"");return isElementVisible(document,`section.${id}.title`)?<h2 className="general-section-title" style={elementStyleCss(document,`section.${id}.title`)} key={block.key}>{block.text}</h2>:null;}
   if(block.kind==="item-heading"&&block.item){const id=block.item.id;const title=isElementVisible(document,`item.${id}.title`);const subtitle=!!block.item.subtitle&&isElementVisible(document,`item.${id}.subtitle`);const date=!!block.item.date&&isElementVisible(document,`item.${id}.date`);return title||subtitle||date?<div className="general-entry-heading" key={block.key}><div>{title&&<strong className="general-entry-title" style={elementStyleCss(document,`item.${id}.title`)}>{block.item.title}</strong>}{subtitle&&<span className="general-entry-subtitle" style={elementStyleCss(document,`item.${id}.subtitle`)}>{block.item.subtitle}</span>}</div>{date&&<time className="general-entry-date" style={elementStyleCss(document,`item.${id}.date`)}>{block.item.date}</time>}</div>:null;}
   if((block.kind==="paragraph"||block.kind==="bullet")&&block.richText)return <p className={`general-entry-summary ${block.kind==="bullet"?"bullet":""}`} key={block.key}>{block.richText.spans.map((span,index)=>span.link?<a href={span.link} key={index}>{span.bold?<strong>{span.text}</strong>:span.text}</a>:span.bold?<strong key={index}>{span.text}</strong>:<span key={index}>{span.text}</span>)}</p>;
   if(block.kind==="links")return <div className="item-links" key={block.key}>{block.links?.map(link=><a href={link.href} key={link.href}>{link.label}</a>)}</div>;
   const itemId=block.key.split("-summary-")[0];
   return block.kind!=="paragraph"||isElementVisible(document,`item.${itemId}.summary`)?<p className={`general-entry-summary ${block.kind==="bullet"?"bullet":""}`} style={block.kind==="paragraph"?elementStyleCss(document,`item.${itemId}.summary`):undefined} key={block.key}>{block.text}</p>:null;
-})}</div>;}
+}
+
+function PrintBlocks({document,blocks}:{document:ResumeDocument;blocks:RenderBlock[]}){
+  const groups:Array<{title?:RenderBlock;entries:RenderBlock[][]}>=[];
+  let group:{title?:RenderBlock;entries:RenderBlock[][]}|undefined;
+  let entry:RenderBlock[]|undefined;
+  for(const block of blocks){
+    if(block.kind==="section"){
+      group={title:block,entries:[]};groups.push(group);entry=undefined;continue;
+    }
+    if(!group){group={entries:[]};groups.push(group);}
+    if(block.kind==="item-heading"||!entry){entry=[];group.entries.push(entry);}
+    entry.push(block);
+  }
+  return <div className="general-print-blocks">{groups.map((section,index)=><section className="general-section general-print-section" key={section.title?.key??`continuation-${index}`}>
+    {section.title&&<PrintBlockContent document={document} block={section.title}/>}<div className="general-section-items">{section.entries.map((items,itemIndex)=><article className="general-entry" key={items[0]?.key??itemIndex}>{items.map(block=><PrintBlockContent document={document} block={block} key={block.key}/>)}</article>)}</div>
+  </section>)}</div>;
+}
 
 function Section({document,section,editable,selected,selectedElementId,onSelect,onSelectElement,onChange,onItemChange,onAddItem,onDeleteItem,onAddSection,onDeleteSection,onMoveItem,onMoveSection}:{document:ResumeDocument;section:ResumeSection;editable?:boolean;selected?:boolean;selectedElementId?:string;onSelect?:()=>void;onSelectElement?:(id:string,label:string)=>void;onChange?:(value:string)=>void;onItemChange?:(item:ResumeItem,key:"title"|"subtitle"|"date"|"summary",value:string)=>void;onAddItem?:(afterItemId?:string)=>void;onDeleteItem?:(itemId:string)=>void;onAddSection?:()=>void;onDeleteSection?:()=>void;onMoveItem?:(fromId:string,toId:string)=>void;onMoveSection?:(fromId:string,toId:string)=>void}){
   const [dragging,setDragging]=useState<string|null>(null); const [dragTarget,setDragTarget]=useState<string|null>(null);

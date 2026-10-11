@@ -1,4 +1,5 @@
 import type { BenchmarkFixture, ResumeDocument, ResumeItem, ResumeSection } from "../../src/resume/model";
+import {createGeneralDocument} from "../../src/resume/templates/general";
 
 const portrait = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iI2Q4ZTVlMiIvPjxjaXJjbGUgY3g9IjUwIiBjeT0iMzgiIHI9IjE4IiBmaWxsPSIjMjQ0YjQ1Ii8+PHBhdGggZD0iTTIwIDEwMGMwLTI1IDEzLTM4IDMwLTM4czMwIDEzIDMwIDM4IiBmaWxsPSIjMjQ0YjQ1Ii8+PC9zdmc+";
 
@@ -80,4 +81,5 @@ export const benchmarkFixtures: BenchmarkFixture[] = [
   { id: "font-failure", document: fontFailure, expected: { pages: 1, text: ["中文仍可读取"], links: ["https://example.com/portfolio"], issues: ["FONT_FALLBACK_USED"], screenshotThreshold: 0.01 } }
 ];
 
-export const fixtureById = Object.fromEntries(benchmarkFixtures.map((fixture) => [fixture.id, fixture]));
+const generalFixture:BenchmarkFixture={id:"general-default",document:createGeneralDocument(),expected:{pages:1,text:["林清远","个人简介","个人总结"],links:[],issues:[],screenshotThreshold:.01}};
+export const fixtureById = {...Object.fromEntries(benchmarkFixtures.map((fixture) => [fixture.id, fixture])),[generalFixture.id]:generalFixture};
