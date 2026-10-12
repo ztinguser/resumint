@@ -1,5 +1,26 @@
 import { expect, test } from "@playwright/test";
 
+test("element panel reflects the selected element's rendered style", async ({ page }) => {
+  await page.goto("/editor?template=general-verdant&qa=element-style-inspector");
+
+  const location = page.locator('[data-element-id="profile.location"]');
+  await location.click();
+  await expect(location).toHaveCSS("color", "rgb(118, 121, 117)");
+  await expect(location).toHaveCSS("font-size", "10.6667px");
+
+  const panel = page.locator(".element-style-panel");
+  await expect(panel.getByLabel("元素文字颜色")).toHaveValue("#767975");
+  await expect(panel.getByText("8 pt", { exact: true })).toBeVisible();
+  await expect(panel.getByText("1.4", { exact: true })).toBeVisible();
+  await expect(panel.getByText("0 mm", { exact: true })).toBeVisible();
+
+  await panel.getByLabel("元素文字颜色").fill("#c0392b");
+  await expect(location).toHaveCSS("color", "rgb(192, 57, 43)");
+  await panel.getByRole("button", { name: "恢复默认" }).click();
+  await expect(location).toHaveCSS("color", "rgb(118, 121, 117)");
+  await expect(panel.getByLabel("元素文字颜色")).toHaveValue("#767975");
+});
+
 test("general template defaults body copy to black and omits the redundant summary item title", async ({ page }) => {
   await page.goto("/editor?template=general-verdant&qa=default-copy");
 

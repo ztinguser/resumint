@@ -38,6 +38,31 @@ export function elementStyleCss(document:ResumeDocument,id:string):CSSProperties
   return {fontFamily:style.fontFamily?`'${style.fontFamily}', Arial, 'Microsoft YaHei', sans-serif`:undefined,fontSize:style.fontSizePt?`${style.fontSizePt}pt`:undefined,color:style.color,lineHeight:style.lineHeight,paddingBottom:style.spacingMm?`${style.spacingMm}mm`:undefined};
 }
 
+type RenderedStyleSource=Pick<CSSStyleDeclaration,"fontFamily"|"fontSize"|"color"|"lineHeight"|"paddingBottom">;
+
+function cssColorToHex(value:string):string{
+  if(/^#[0-9a-f]{6}$/i.test(value))return value.toLowerCase();
+  const channels=value.match(/[\d.]+/g)?.slice(0,3).map(Number);
+  return channels?.length===3?`#${channels.map(channel=>Math.max(0,Math.min(255,Math.round(channel))).toString(16).padStart(2,"0")).join("")}`:"#000000";
+}
+
+export function normalizeRenderedElementStyle(style:RenderedStyleSource):Required<ElementStyle>{
+  const fontSizePx=Number.parseFloat(style.fontSize)||12;
+  const lineHeightPx=Number.parseFloat(style.lineHeight);
+  const round=(value:number)=>Number(value.toFixed(2));
+  return {
+    fontFamily:style.fontFamily.split(",")[0].trim().replace(/^['"]|['"]$/g,""),
+    fontSizePt:round(fontSizePx*72/96),
+    color:cssColorToHex(style.color),
+    lineHeight:Number.isFinite(lineHeightPx)?round(lineHeightPx/fontSizePx):1.2,
+    spacingMm:round((Number.parseFloat(style.paddingBottom)||0)*25.4/96),
+  };
+}
+
+export function readRenderedElementStyle(element:Element):Required<ElementStyle>{
+  return normalizeRenderedElementStyle(getComputedStyle(element));
+}
+
 export function themeVariables(document:ResumeDocument):CSSProperties{
   return {"--accent":document.layout.theme.accentColor,"--font":`'${document.layout.theme.fontFamily}', Arial, 'Microsoft YaHei', sans-serif`,"--body-font-size":`${document.layout.theme.fontSizePt??8.5}pt`,"--body-line-height":document.layout.theme.lineHeight??1.48} as CSSProperties;
 }

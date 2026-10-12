@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 import { createGeneralDocument } from "../../src/resume/templates/general";
-import { addContact, duplicateSectionAfter, elementStyleCss, insertItemAfter, moveById, removeById, themeVariables } from "../../src/features/editor/direct-canvas";
+import { addContact, duplicateSectionAfter, elementStyleCss, insertItemAfter, moveById, normalizeRenderedElementStyle, removeById, themeVariables } from "../../src/features/editor/direct-canvas";
 import {hideElement,isElementVisible}from"../../src/resume/element-visibility";
 import { paginateGeneralResume } from "../../src/resume/general-pagination";
 
@@ -62,6 +62,10 @@ describe("direct resume canvas", () => {
     const document=createGeneralDocument();
     document.elementStyles={"item.general-education-1.title":{fontFamily:"SimSun",fontSizePt:12,color:"#91452f",lineHeight:1.4,spacingMm:2}};
     expect(elementStyleCss(document,"item.general-education-1.title")).toMatchObject({fontSize:"12pt",color:"#91452f",lineHeight:1.4,paddingBottom:"2mm"});
+  });
+
+  test("normalizes the browser's rendered style for the element inspector", () => {
+    expect(normalizeRenderedElementStyle({fontFamily:'"Microsoft YaHei", sans-serif',fontSize:"10.6667px",color:"rgb(118, 121, 117)",lineHeight:"14.9334px",paddingBottom:"0px"})).toEqual({fontFamily:"Microsoft YaHei",fontSizePt:8,color:"#767975",lineHeight:1.4,spacingMm:0});
   });
 
   test("maps theme controls to live canvas variables", () => {

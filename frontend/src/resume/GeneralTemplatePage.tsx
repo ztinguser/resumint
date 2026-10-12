@@ -1,16 +1,16 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { elementStyleCss, themeVariables } from "@/features/editor/direct-canvas";
+import { elementStyleCss, readRenderedElementStyle, themeVariables } from "@/features/editor/direct-canvas";
 import {isElementVisible}from"./element-visibility";
-import type { ResumeDocument, ResumeItem, ResumeSection } from "./model";
+import type { ElementStyle, ResumeDocument, ResumeItem, ResumeSection } from "./model";
 import type { RenderBlock } from "./pagination";
 
 type EditableKey = "fullName"|"headline"|"contactTitle"|"email"|"phone"|"location";
 type Props = {
   document:ResumeDocument; editable?:boolean; printBlocks?:RenderBlock[]; pageNumber?:number;
   selectedSectionId?:string; selectedElementId?:string; onClearSelection?:()=>void;
-  onSelectSection?:(id:string)=>void; onSelectElement?:(id:string,label:string)=>void;
+  onSelectSection?:(id:string)=>void; onSelectElement?:(id:string,label:string,renderedStyle:Required<ElementStyle>)=>void;
   onProfileChange?:(key:EditableKey,value:string)=>void; onWebsiteChange?:(value:string)=>void;
   onContactChange?:(id:string,key:"label"|"value",value:string)=>void; onAddContact?:()=>void; onDeleteContact?:(id:string)=>void;
   onSectionChange?:(sectionId:string,key:"title",value:string)=>void;
@@ -22,12 +22,12 @@ type Props = {
   onMoveSection?:(fromId:string,toId:string)=>void; onMoveItem?:(sectionId:string,fromId:string,toId:string)=>void;
 };
 
-function EditableText({document,elementId,value,onCommit,onSelect,selected,className,multiline=false,tag,label}:{document:ResumeDocument;elementId:string;value:string;onCommit?:(value:string)=>void;onSelect?:(id:string,label:string)=>void;selected?:boolean;className?:string;multiline?:boolean;tag?:"span"|"div"|"h2";label:string}){
+function EditableText({document,elementId,value,onCommit,onSelect,selected,className,multiline=false,tag,label}:{document:ResumeDocument;elementId:string;value:string;onCommit?:(value:string)=>void;onSelect?:(id:string,label:string,renderedStyle:Required<ElementStyle>)=>void;selected?:boolean;className?:string;multiline?:boolean;tag?:"span"|"div"|"h2";label:string}){
   const [editing,setEditing]=useState(false); const ref=useRef<HTMLElement>(null);
   useEffect(()=>{if(editing){ref.current?.focus();window.document.execCommand("selectAll",false);}},[editing]);
   const finish=()=>{const next=ref.current?.textContent?.trim()||value;setEditing(false);if(next!==value)onCommit?.(next);};
   const Tag=tag??(multiline?"div":"span");
-  return <Tag ref={ref as never} style={elementStyleCss(document,elementId)} data-element-id={elementId} className={`${className??""} ${onCommit?"direct-editable":""} ${editing?"is-editing":""} ${selected?"is-element-selected":""}`} contentEditable={editing} suppressContentEditableWarning role={onCommit?"textbox":undefined} aria-label={onCommit?`${label}，双击编辑`:undefined} title={onCommit?"双击编辑":undefined} onClick={event=>{event.stopPropagation();onSelect?.(elementId,label);}} onDoubleClick={()=>{onSelect?.(elementId,label);if(onCommit)setEditing(true);}} onBlur={finish} onKeyDown={event=>{if(event.key==="Escape"){if(ref.current)ref.current.textContent=value;setEditing(false);}if(!multiline&&event.key==="Enter"){event.preventDefault();finish();}}}>{value}</Tag>;
+  return <Tag ref={ref as never} style={elementStyleCss(document,elementId)} data-element-id={elementId} className={`${className??""} ${onCommit?"direct-editable":""} ${editing?"is-editing":""} ${selected?"is-element-selected":""}`} contentEditable={editing} suppressContentEditableWarning role={onCommit?"textbox":undefined} aria-label={onCommit?`${label}，双击编辑`:undefined} title={onCommit?"双击编辑":undefined} onClick={event=>{event.stopPropagation();onSelect?.(elementId,label,readRenderedElementStyle(event.currentTarget));}} onDoubleClick={event=>{onSelect?.(elementId,label,readRenderedElementStyle(event.currentTarget));if(onCommit)setEditing(true);}} onBlur={finish} onKeyDown={event=>{if(event.key==="Escape"){if(ref.current)ref.current.textContent=value;setEditing(false);}if(!multiline&&event.key==="Enter"){event.preventDefault();finish();}}}>{value}</Tag>;
 }
 
 function PrintBlockContent({document,block}:{document:ResumeDocument;block:RenderBlock}){
@@ -56,7 +56,7 @@ function PrintBlocks({document,blocks}:{document:ResumeDocument;blocks:RenderBlo
   </section>)}</div>;
 }
 
-function Section({document,section,editable,selected,selectedElementId,onSelect,onSelectElement,onChange,onItemChange,onAddItem,onDeleteItem,onAddSection,onDeleteSection,onMoveItem,onMoveSection}:{document:ResumeDocument;section:ResumeSection;editable?:boolean;selected?:boolean;selectedElementId?:string;onSelect?:()=>void;onSelectElement?:(id:string,label:string)=>void;onChange?:(value:string)=>void;onItemChange?:(item:ResumeItem,key:"title"|"subtitle"|"date"|"summary",value:string)=>void;onAddItem?:(afterItemId?:string)=>void;onDeleteItem?:(itemId:string)=>void;onAddSection?:()=>void;onDeleteSection?:()=>void;onMoveItem?:(fromId:string,toId:string)=>void;onMoveSection?:(fromId:string,toId:string)=>void}){
+function Section({document,section,editable,selected,selectedElementId,onSelect,onSelectElement,onChange,onItemChange,onAddItem,onDeleteItem,onAddSection,onDeleteSection,onMoveItem,onMoveSection}:{document:ResumeDocument;section:ResumeSection;editable?:boolean;selected?:boolean;selectedElementId?:string;onSelect?:()=>void;onSelectElement?:(id:string,label:string,renderedStyle:Required<ElementStyle>)=>void;onChange?:(value:string)=>void;onItemChange?:(item:ResumeItem,key:"title"|"subtitle"|"date"|"summary",value:string)=>void;onAddItem?:(afterItemId?:string)=>void;onDeleteItem?:(itemId:string)=>void;onAddSection?:()=>void;onDeleteSection?:()=>void;onMoveItem?:(fromId:string,toId:string)=>void;onMoveSection?:(fromId:string,toId:string)=>void}){
   const [dragging,setDragging]=useState<string|null>(null); const [dragTarget,setDragTarget]=useState<string|null>(null);
   const selectedItemId=section.items.find(item=>selectedElementId?.startsWith(`item.${item.id}.`))?.id;
   const hasSelectedDescendant=selectedElementId===`section.${section.id}.title`||!!selectedItemId;
