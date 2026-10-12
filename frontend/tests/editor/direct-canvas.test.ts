@@ -60,12 +60,12 @@ describe("direct resume canvas", () => {
 
   test("maps a selected element style to inline canvas properties", () => {
     const document=createGeneralDocument();
-    document.elementStyles={"item.general-education-1.title":{fontFamily:"SimSun",fontSizePt:12,color:"#91452f",lineHeight:1.4,spacingMm:2}};
-    expect(elementStyleCss(document,"item.general-education-1.title")).toMatchObject({fontSize:"12pt",color:"#91452f",lineHeight:1.4,paddingBottom:"2mm"});
+    document.elementStyles={"item.general-education-1.title":{fontFamily:"SimSun",fontWeight:700,fontSizePt:12,color:"#91452f",lineHeight:1.4,spacingMm:2}};
+    expect(elementStyleCss(document,"item.general-education-1.title")).toMatchObject({fontWeight:700,fontSize:"12pt",color:"#91452f",lineHeight:1.4,paddingBottom:"2mm"});
   });
 
   test("normalizes the browser's rendered style for the element inspector", () => {
-    expect(normalizeRenderedElementStyle({fontFamily:'"Microsoft YaHei", sans-serif',fontSize:"10.6667px",color:"rgb(118, 121, 117)",lineHeight:"14.9334px",paddingBottom:"0px"})).toEqual({fontFamily:"Microsoft YaHei",fontSizePt:8,color:"#767975",lineHeight:1.4,spacingMm:0});
+    expect(normalizeRenderedElementStyle({fontFamily:'"Microsoft YaHei", sans-serif',fontWeight:"700",fontSize:"10.6667px",color:"rgb(118, 121, 117)",lineHeight:"14.9334px",paddingBottom:"0px"})).toEqual({fontFamily:"Microsoft YaHei",fontWeight:700,fontSizePt:8,color:"#767975",lineHeight:1.4,spacingMm:0});
   });
 
   test("maps theme controls to live canvas variables", () => {

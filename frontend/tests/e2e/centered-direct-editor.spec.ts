@@ -23,6 +23,18 @@ test("second candidate opens with editable Chinese content and working element s
   const location=resume.locator('[data-element-id="contact.centered-location.value"]');
   await location.click();
   await expect(page.locator(".element-style-panel").getByLabel("元素文字颜色")).toHaveValue("#858585");
+  await expect(page.getByRole("button",{name:"元素字体常规"})).toHaveAttribute("aria-pressed","true");
+  await page.getByRole("button",{name:"元素字体粗体"}).click();
+  await expect(location).toHaveCSS("font-weight","700");
+  await page.getByRole("button",{name:"恢复默认"}).click();
+  await expect(location).toHaveCSS("font-weight","400");
+  await expect(page.getByRole("button",{name:"元素字体常规"})).toHaveAttribute("aria-pressed","true");
+
+  const contactCount=await resume.locator(".centered-contact").count();
+  await resume.locator(".centered-contacts").hover();
+  await expect(page.getByRole("button",{name:"新增联系方式"})).toBeVisible();
+  await page.getByRole("button",{name:"新增联系方式"}).click();
+  await expect(resume.locator(".centered-contact")).toHaveCount(contactCount+1);
   await location.dblclick();
   await location.fill("杭州市西湖区");
   await location.press("Enter");

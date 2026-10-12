@@ -1,7 +1,7 @@
 export type ResumeLink = { label: string; href: string };
 export type ResumeField = { id: string; label: string; type: "short-text" | "long-text" | "date" | "date-range" | "link"; value: string };
 export type RichTextBlock = { id: string; type: "paragraph" | "bullet"; spans: Array<{ text: string; bold?: boolean; link?: string }> };
-export type ElementStyle = { fontFamily?: string; fontSizePt?: number; color?: string; lineHeight?: number; spacingMm?: number };
+export type ElementStyle = { fontFamily?: string; fontWeight?: number; fontSizePt?: number; color?: string; lineHeight?: number; spacingMm?: number };
 
 export type ResumeItem = {
   id: string;

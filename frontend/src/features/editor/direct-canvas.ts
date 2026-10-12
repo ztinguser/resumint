@@ -35,10 +35,10 @@ export function elementStyle(document:ResumeDocument,id:string):ElementStyle{ret
 
 export function elementStyleCss(document:ResumeDocument,id:string):CSSProperties{
   const style=elementStyle(document,id);
-  return {fontFamily:style.fontFamily?`'${style.fontFamily}', Arial, 'Microsoft YaHei', sans-serif`:undefined,fontSize:style.fontSizePt?`${style.fontSizePt}pt`:undefined,color:style.color,lineHeight:style.lineHeight,paddingBottom:style.spacingMm?`${style.spacingMm}mm`:undefined};
+  return {fontFamily:style.fontFamily?`'${style.fontFamily}', Arial, 'Microsoft YaHei', sans-serif`:undefined,fontWeight:style.fontWeight,fontSize:style.fontSizePt?`${style.fontSizePt}pt`:undefined,color:style.color,lineHeight:style.lineHeight,paddingBottom:style.spacingMm?`${style.spacingMm}mm`:undefined};
 }
 
-type RenderedStyleSource=Pick<CSSStyleDeclaration,"fontFamily"|"fontSize"|"color"|"lineHeight"|"paddingBottom">;
+type RenderedStyleSource=Pick<CSSStyleDeclaration,"fontFamily"|"fontWeight"|"fontSize"|"color"|"lineHeight"|"paddingBottom">;
 
 function cssColorToHex(value:string):string{
   if(/^#[0-9a-f]{6}$/i.test(value))return value.toLowerCase();
@@ -48,10 +48,12 @@ function cssColorToHex(value:string):string{
 
 export function normalizeRenderedElementStyle(style:RenderedStyleSource):Required<ElementStyle>{
   const fontSizePx=Number.parseFloat(style.fontSize)||12;
+  const numericFontWeight=Number.parseInt(style.fontWeight,10);
   const lineHeightPx=Number.parseFloat(style.lineHeight);
   const round=(value:number)=>Number(value.toFixed(2));
   return {
     fontFamily:style.fontFamily.split(",")[0].trim().replace(/^['"]|['"]$/g,""),
+    fontWeight:Number.isFinite(numericFontWeight)?numericFontWeight:style.fontWeight==="bold"?700:400,
     fontSizePt:round(fontSizePx*72/96),
     color:cssColorToHex(style.color),
     lineHeight:Number.isFinite(lineHeightPx)?round(lineHeightPx/fontSizePx):1.2,
