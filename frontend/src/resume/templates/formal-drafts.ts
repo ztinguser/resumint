@@ -38,10 +38,10 @@ export const formalTemplateCandidates:FormalTemplateCandidate[]=[
     componentVersions,assetManifest:[],
   },
   {
-    stableId:"business-ledger",recommendedName:"蓝图纪事",alternateNames:["铅字公馆","深海公文"],
-    rationale:"深海军蓝页首配明确双栏，侧栏承载技能与摘要，主栏突出可量化经历，呈现专业和秩序感。",
-    assetPlan:"纯排版、CSS 色块与线框；不使用照片、外部图标或远程资源。字体候选同为 Noto Sans SC，确认授权与摘要后再发布。",
-    config:{visualKey:"ledger",layoutTree:{type:"page",children:[{id:"header",kind:"header",label:"商务页首",locked:true},{id:"columns",kind:"section-list",label:"双栏内容",locked:false,children:[{id:"side",kind:"skill-list",label:"侧栏",locked:false},{id:"main",kind:"section-list",label:"主栏",locked:false}]},{id:"fallback",kind:"custom-fallback",label:"未知字段兜底",locked:true}]},componentCatalog:[{kind:"header",label:"深色页首",allowed:true},{kind:"section-list",label:"经历列表",allowed:true},{kind:"skill-list",label:"技能侧栏",allowed:true},{kind:"shape",label:"受控色块",allowed:true},{kind:"custom-fallback",label:"自定义模块兜底",allowed:true}],bindings,editableParameters:{...editableParameters,accentColor:{type:"color",default:"#17324d",locked:false}},fallback,continuation:{kind:"explicit-two-column",side:"side-first-each-page",main:"main-flow"}},
+    stableId:"business-ledger",recommendedName:"设计预览 02",alternateNames:["待命名"],
+    rationale:"居中圆形肖像与高留白建立第一视觉焦点，下方黑灰双栏把个人信息和能力放在左侧、教育与经历放在右侧。",
+    assetPlan:"复用第一套候选已采用的内容寻址示例头像；不新增外部字体、图标或远程素材。确认展示名、视觉与素材使用后再发布。",
+    config:{visualKey:"centered",layoutTree:{type:"page",children:[{id:"header",kind:"header",label:"居中肖像与姓名",locked:true},{id:"columns",kind:"section-list",label:"双栏内容",locked:false,children:[{id:"side",kind:"skill-list",label:"信息与技能",locked:false},{id:"main",kind:"section-list",label:"教育与经历",locked:false}]},{id:"fallback",kind:"custom-fallback",label:"未知字段兜底",locked:true}]},componentCatalog:[{kind:"header",label:"居中肖像页首",allowed:true},{kind:"section-list",label:"经历列表",allowed:true},{kind:"skill-list",label:"技能列表",allowed:true},{kind:"custom-fallback",label:"自定义模块兜底",allowed:true}],bindings,editableParameters:{...editableParameters,accentColor:{type:"color",default:"#242424",locked:false}},fallback,continuation:{kind:"explicit-two-column",side:"side-flow",main:"main-flow"}},
     componentVersions,assetManifest:[],
   },
   {
@@ -59,9 +59,9 @@ export function createCandidateSample(candidate:FormalTemplateCandidate,kind:Sam
   document.documentId=`candidate-${candidate.stableId}-${kind}`;
   document.template={id:candidate.stableId,version:0};
   const visual=candidate.config.visualKey;
-  document.layout.kind=visual==="ledger"?"two-column":"single";
+  document.layout.kind=visual==="centered"?"two-column":"single";
   document.layout.page.marginMm=visual==="bareline"?20:16;
-  document.layout.theme.accentColor=visual==="ledger"?"#17324d":visual==="verdant"?"#315b52":"#202020";
+  document.layout.theme.accentColor=visual==="centered"?"#242424":visual==="verdant"?"#315b52":"#202020";
   document.layout.theme.fontFamily="Noto Sans SC";
   document.layout.decorations=[];
   if(kind==="short") document.sections=document.sections.map(section=>({...section,items:section.items.slice(0,1)}));

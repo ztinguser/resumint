@@ -8,6 +8,8 @@ import { GeneralTemplatePage } from "./GeneralTemplatePage";
 import { GENERAL_TEMPLATE_ID } from "./templates/general";
 import{paginateGeneralResume}from"./general-pagination";
 import{themeVariables}from"@/features/editor/direct-canvas";
+import{CenteredTemplatePage}from"./CenteredTemplatePage";
+import{CENTERED_TEMPLATE_ID}from"./templates/centered";
 
 declare global {
   interface Window {
@@ -46,6 +48,7 @@ export function ResumePrintDocument({ initialDocument }: { initialDocument: Resu
 
   const templateClass = `template-${document.template.id.replace(/[^a-z0-9-]/g, "")}`;
   if(document.template.id===GENERAL_TEMPLATE_ID){const generalPages=paginateGeneralResume(document);return <main className={`print-root ${templateClass}`} style={themeVariables(document)} data-issues={issues.join(",")}>{generalPages.map((page,index)=><GeneralTemplatePage document={document} printBlocks={page.main} pageNumber={index+1} key={index}/>)}</main>;}
+  if(document.template.id===CENTERED_TEMPLATE_ID)return <main className={`print-root ${templateClass}`} style={themeVariables(document)} data-issues={issues.join(",")}>{pages.map((page,index)=><CenteredTemplatePage document={document} printPage={page} pageNumber={index+1} key={index}/>)}</main>;
   return <main className={`print-root ${templateClass}`} style={{ "--accent": document.layout.theme.accentColor, "--font": `'${document.layout.theme.fontFamily}', Arial, 'Microsoft YaHei', sans-serif`, "--body-font-size": `${document.layout.theme.fontSizePt ?? 8.5}pt`, "--body-line-height": document.layout.theme.lineHeight ?? 1.48 } as React.CSSProperties} data-issues={issues.join(",")}>
     {pages.map((page, index) => <article className={`resume-page ${twoColumn ? "two-column" : "single-column"}`} style={{ padding: `${document.layout.page.marginMm}mm` }} data-page={index + 1} key={index}>
       {document.layout.decorations.map((decoration) => <i data-decoration-id={decoration.id} key={decoration.id} className={`decoration ${decoration.type}`} style={{ left: `${decoration.xMm}mm`, top: `${decoration.yMm}mm`, width: `${decoration.widthMm}mm`, height: `${decoration.heightMm}mm`, background: decoration.color, transform: `rotate(${decoration.rotation ?? 0}deg)`, zIndex: decoration.zIndex ?? 0 }} />)}

@@ -1,58 +1,47 @@
-# 通用模板设计 QA
+# 第二套模板设计 QA
 
-- source visual truth path: `C:/Users/mofang/AppData/Local/Temp/codex-clipboard-918de11f-e53c-4a87-986e-ecb6de45c75c.png`
-- implementation URL: `http://127.0.0.1:3100/editor?template=general-verdant`
-- implementation screenshot: Codex 应用内浏览器当前任务的最终内联截图（tab 2，2026-10-11）；浏览器截图接口未暴露本地文件路径
-- viewport: 1280 × 720 CSS px，桌面态，device scale factor 1
-- source pixels: 595 × 842 px
-- implementation canvas: 210 × 297 mm；预览缩放 72%，约 572 × 808 CSS px
-- density normalization: 两者均按 A4 等比比较；判断重点为页面内容区，不比较编辑器顶栏、画布背景和右侧属性区
-- state: 游客模式、通用模板初始实例内容、工作经历选中态
+- Source visual truth: `C:\Users\mofang\Downloads\Template 20.png`
+- Implementation screenshot: `C:\Users\mofang\Desktop\agent\project\resumint\frontend\test-results\candidates\centered-print.png`
+- Combined comparison: `C:\Users\mofang\Desktop\agent\project\resumint\.test-tmp\design-qa\centered-comparison.png`
+- Actual exported PDF render: `C:\Users\mofang\Desktop\agent\project\resumint\tmp\pdfs\centered-template-export-final.png`
+- Viewport: A4 page at 210 × 297 mm; browser CSS output 794 × 1123 px at device scale 1
+- Source pixels: 1190 × 1684
+- Implementation pixels: 794 × 1123; normalized to 1190 × 1684 for the combined comparison
+- State: default Chinese example content, print media, first page
 
-## Full-view comparison evidence
+**Findings**
 
-参考稿与实现均使用白色 A4、圆形灰度头像、职业标题和姓名组成的顶部身份区；下方为个人简介/联系方式双栏，再以细分隔线承接教育经历、工作经历和个人总结。实现保留了参考稿的单色、低装饰、宽留白和清晰纵向阅读顺序，同时将所有标题与实例内容本地化为中文。
+- No actionable P0/P1/P2 mismatch remains.
+- Typography: the implementation uses the project's available Microsoft YaHei stack for Chinese rather than the Latin face visible in the English reference. Weight, hierarchy, line height, and gray/black contrast follow the reference; the typeface difference is intentional because the delivered instance content is Chinese.
+- Spacing and layout rhythm: circular portrait size, top offset, centered identity, body start, column tracks, inter-column gap, and page margins align with the normalized reference.
+- Colors and visual tokens: white page, near-black headings, and neutral gray body copy match the source direction; no decorative category color was introduced.
+- Image quality and asset fidelity: the candidate reuses the existing content-addressed monochrome example portrait. The portrait subject differs from the reference while its crop, scale, circular mask, and tonal treatment match; this is intentional pending final material confirmation.
+- Copy and content: the source's English content was replaced with Chinese instance text while preserving the same information hierarchy and approximate density.
 
-模板库另行检查：缩略图只包含头像、标题、双栏与分区的灰色骨架块，不包含姓名、公司、学校或联系方式实例文本。
+**Focused Region Evidence**
 
-## Focused region comparison evidence
+The 1190 × 1684 normalized full-page comparison keeps the portrait, header, both column headings, contact rows, education entries, employment entries, and skill list readable, so an additional crop was not required.
 
-- 顶部身份区：头像比例、圆形裁切、标题/姓名层级及下分隔线与参考稿一致；使用虚构灰度职业头像，避免复制参考人物身份。
-- 简介/联系方式：保持左宽右窄双栏，联系方式使用浅灰圆点，正文采用弱化灰色。
-- 经历区：学校/公司和日期左右对齐，角色置于名称下方，描述保持低对比度；分区间使用 1px 浅灰分隔线。
-- 编辑态：选中分区出现轻量虚线轮廓，右侧出现圆形加号；双击文字进入原位编辑，不出现左侧表单。
+**Comparison History**
 
-## Required fidelity surfaces
+1. Initial print comparison found a P1 mismatch: a legacy `business-ledger` print rule forced top padding to zero, while the workbench retained 17 mm.
+2. Removed the obsolete dark-header print rules and restored the candidate's 17 mm top padding.
+3. Post-fix automated geometry comparison confirms identical page padding, header height, column widths, gap, and name size between workbench and print view.
+4. The first real PDF export exposed a blank second page caused by the editable preview's 18 px bottom margin winning the print cascade.
+5. Added an explicit zero print margin for the centered template. The final Chromium PDF is one A4 page according to Poppler and its rendered PNG contains all expected content without clipping or overlap.
 
-- Fonts and typography: 中文采用系统可用的 `Microsoft YaHei` 回退栈；姓名、分区标题、条目标题、正文和日期建立五级层次。参考稿的拉丁字形无法直接用于中文，属于有意本地化。
-- Spacing and layout rhythm: A4 比例、14 mm 页边距、顶部 24 mm 头像区、双栏概览和纵向分区与参考结构一致；增大经历分区节奏并补充实例文本后，页面下半部密度接近参考稿。
-- Colors and visual tokens: 白底、近黑主文字、灰色正文、浅灰分隔线，无额外品牌色干扰。
-- Image quality and asset fidelity: 使用 1254 × 1254 的生成式灰度职业头像，圆形裁切清晰；素材文件名包含 SHA-256 前 16 位，未使用 CSS 伪造头像。
-- Copy and content: 模板库无实例文案；编辑页为中文姓名、职业、联系方式、教育、工作和总结实例。
+**Interaction and Runtime Evidence**
 
-## Comparison history
+- Tested template-library skeleton without instance copy.
+- Tested direct editing of Chinese contact content.
+- Tested selected-element style inspection against the rendered gray value.
+- Tested workbench/print composition parity.
+- Generated and rendered the real downloaded PDF; verified one A4 page and no blank trailing page.
+- Checked the in-app browser console: no errors or warnings.
 
-1. 初次浏览器对照发现 [P2] 模板接口离线时出现红色错误文案，干扰单模板视觉确认；已在仍有本地候选稿时隐藏该错误。复查未再出现错误文案。
-2. 初次编辑器对照发现 [P2] 通用模板沿用通用分页估算并显示“第 1 / 2 页”，与实际单页画布不一致；已对通用候选稿使用实际单页状态。复查显示“第 1 / 1 页”和“1 页 A4”。
-3. 初次对照发现 [P2] 工作经历较短，页面下半部节奏弱于参考稿；已补充中文实例文本并增加分区和条目间距。复查确认全部分区仍在单页内可见。
-4. 交互复查：双击姓名改为“林清远（交互测试）”成功；工作经历由 2 条新增为 3 条成功；连续撤销后姓名恢复“林清远”、经历恢复 2 条。
-5. 浏览器控制台复查：0 条 warning/error。
+**Follow-up Polish**
 
-## Findings
-
-无待处理 P0/P1/P2 问题。
-
-P3：参考稿使用偏几何的拉丁字体，而当前中文稿使用系统微软雅黑；正式发布前可随展示名和视觉定稿一并确认是否引入明确授权的中文字体。
-
-## Implementation checklist
-
-- [x] 模板库只显示结构骨架
-- [x] 编辑页显示中文实例文本
-- [x] 无左侧内容表单
-- [x] 双击原位编辑
-- [x] 分区拖拽排序入口
-- [x] 分区右侧新增同类内容
-- [x] 右侧仅保留上下文说明与基础样式
-- [x] 单页 A4 状态与控制台检查
+- P3: revisit the exact Chinese font only if a separately licensed font asset is approved for the final published version.
+- P3: replace the temporary display name after product confirmation.
 
 final result: passed

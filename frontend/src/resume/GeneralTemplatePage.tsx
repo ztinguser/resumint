@@ -7,7 +7,7 @@ import type { ElementStyle, ResumeDocument, ResumeItem, ResumeSection } from "./
 import type { RenderBlock } from "./pagination";
 
 type EditableKey = "fullName"|"headline"|"contactTitle"|"email"|"phone"|"location";
-type Props = {
+export type DirectTemplatePageProps = {
   document:ResumeDocument; editable?:boolean; printBlocks?:RenderBlock[]; pageNumber?:number;
   selectedSectionId?:string; selectedElementId?:string; onClearSelection?:()=>void;
   onSelectSection?:(id:string)=>void; onSelectElement?:(id:string,label:string,renderedStyle:Required<ElementStyle>)=>void;
@@ -22,7 +22,7 @@ type Props = {
   onMoveSection?:(fromId:string,toId:string)=>void; onMoveItem?:(sectionId:string,fromId:string,toId:string)=>void;
 };
 
-function EditableText({document,elementId,value,onCommit,onSelect,selected,className,multiline=false,tag,label}:{document:ResumeDocument;elementId:string;value:string;onCommit?:(value:string)=>void;onSelect?:(id:string,label:string,renderedStyle:Required<ElementStyle>)=>void;selected?:boolean;className?:string;multiline?:boolean;tag?:"span"|"div"|"h2";label:string}){
+export function EditableText({document,elementId,value,onCommit,onSelect,selected,className,multiline=false,tag,label}:{document:ResumeDocument;elementId:string;value:string;onCommit?:(value:string)=>void;onSelect?:(id:string,label:string,renderedStyle:Required<ElementStyle>)=>void;selected?:boolean;className?:string;multiline?:boolean;tag?:"span"|"div"|"h2";label:string}){
   const [editing,setEditing]=useState(false); const ref=useRef<HTMLElement>(null);
   useEffect(()=>{if(editing){ref.current?.focus();window.document.execCommand("selectAll",false);}},[editing]);
   const finish=()=>{const next=ref.current?.textContent?.trim()||value;setEditing(false);if(next!==value)onCommit?.(next);};
@@ -39,7 +39,7 @@ function PrintBlockContent({document,block}:{document:ResumeDocument;block:Rende
   return block.kind!=="paragraph"||isElementVisible(document,`item.${itemId}.summary`)?<p className={`general-entry-summary ${block.kind==="bullet"?"bullet":""}`} style={block.kind==="paragraph"?elementStyleCss(document,`item.${itemId}.summary`):undefined} key={block.key}>{block.text}</p>:null;
 }
 
-function PrintBlocks({document,blocks}:{document:ResumeDocument;blocks:RenderBlock[]}){
+export function PrintBlocks({document,blocks}:{document:ResumeDocument;blocks:RenderBlock[]}){
   const groups:Array<{title?:RenderBlock;entries:RenderBlock[][]}>=[];
   let group:{title?:RenderBlock;entries:RenderBlock[][]}|undefined;
   let entry:RenderBlock[]|undefined;
@@ -51,12 +51,12 @@ function PrintBlocks({document,blocks}:{document:ResumeDocument;blocks:RenderBlo
     if(block.kind==="item-heading"||!entry){entry=[];group.entries.push(entry);}
     entry.push(block);
   }
-  return <div className="general-print-blocks">{groups.map((section,index)=><section className="general-section general-print-section" key={section.title?.key??`continuation-${index}`}>
+  return <div className="general-print-blocks">{groups.map((section,index)=>{const sectionId=section.title?.key.replace(/-title$/g,"");return <section className="general-section general-print-section" data-section-id={sectionId} key={section.title?.key??`continuation-${index}`}>
     {section.title&&<PrintBlockContent document={document} block={section.title}/>}<div className="general-section-items">{section.entries.map((items,itemIndex)=><article className="general-entry" key={items[0]?.key??itemIndex}>{items.map(block=><PrintBlockContent document={document} block={block} key={block.key}/>)}</article>)}</div>
-  </section>)}</div>;
+  </section>;})}</div>;
 }
 
-function Section({document,section,editable,selected,selectedElementId,onSelect,onSelectElement,onChange,onItemChange,onAddItem,onDeleteItem,onAddSection,onDeleteSection,onMoveItem,onMoveSection}:{document:ResumeDocument;section:ResumeSection;editable?:boolean;selected?:boolean;selectedElementId?:string;onSelect?:()=>void;onSelectElement?:(id:string,label:string,renderedStyle:Required<ElementStyle>)=>void;onChange?:(value:string)=>void;onItemChange?:(item:ResumeItem,key:"title"|"subtitle"|"date"|"summary",value:string)=>void;onAddItem?:(afterItemId?:string)=>void;onDeleteItem?:(itemId:string)=>void;onAddSection?:()=>void;onDeleteSection?:()=>void;onMoveItem?:(fromId:string,toId:string)=>void;onMoveSection?:(fromId:string,toId:string)=>void}){
+export function DirectSection({document,section,editable,selected,selectedElementId,onSelect,onSelectElement,onChange,onItemChange,onAddItem,onDeleteItem,onAddSection,onDeleteSection,onMoveItem,onMoveSection}:{document:ResumeDocument;section:ResumeSection;editable?:boolean;selected?:boolean;selectedElementId?:string;onSelect?:()=>void;onSelectElement?:(id:string,label:string,renderedStyle:Required<ElementStyle>)=>void;onChange?:(value:string)=>void;onItemChange?:(item:ResumeItem,key:"title"|"subtitle"|"date"|"summary",value:string)=>void;onAddItem?:(afterItemId?:string)=>void;onDeleteItem?:(itemId:string)=>void;onAddSection?:()=>void;onDeleteSection?:()=>void;onMoveItem?:(fromId:string,toId:string)=>void;onMoveSection?:(fromId:string,toId:string)=>void}){
   const [dragging,setDragging]=useState<string|null>(null); const [dragTarget,setDragTarget]=useState<string|null>(null);
   const selectedItemId=section.items.find(item=>selectedElementId?.startsWith(`item.${item.id}.`))?.id;
   const hasSelectedDescendant=selectedElementId===`section.${section.id}.title`||!!selectedItemId;
@@ -81,7 +81,7 @@ function Section({document,section,editable,selected,selectedElementId,onSelect,
   </section>;
 }
 
-export function GeneralTemplatePage(props:Props){
+export function GeneralTemplatePage(props:DirectTemplatePageProps){
   const {document,editable,selectedSectionId,selectedElementId,pageNumber=1,printBlocks}=props; const profile=document.profile;
   const intro=document.sections.find(section=>section.id==="general-profile"&&section.visible); const body=document.sections.filter(section=>section.id!=="general-profile"&&section.visible); const profileItem=intro?.items[0];
   const text=(id:string,value:string,label:string,onCommit:(value:string)=>void,className?:string,multiline=false)=>isElementVisible(document,id)?<EditableText document={document} elementId={id} selected={selectedElementId===id} onSelect={props.onSelectElement} value={value} label={label} onCommit={onCommit} className={className} multiline={multiline}/>:null;
@@ -91,6 +91,6 @@ export function GeneralTemplatePage(props:Props){
       <img src={profile.portrait.src} alt={profile.portrait.alt}/>
     </div>}<div className="general-identity">{text("profile.headline",profile.headline,"职业标题",value=>props.onProfileChange?.("headline",value),"general-headline")}{text("profile.fullName",profile.fullName,"姓名",value=>props.onProfileChange?.("fullName",value),"general-name")}</div></header>
     <section className="general-overview"><div className="general-profile-copy">{isElementVisible(document,`section.${intro?.id??"general-profile"}.title`)&&<EditableText document={document} elementId={`section.${intro?.id??"general-profile"}.title`} selected={selectedElementId===`section.${intro?.id??"general-profile"}.title`} onSelect={props.onSelectElement} value={intro?.title??"个人简介"} label="个人简介标题" tag="h2" onCommit={value=>intro&&props.onSectionChange?.(intro.id,"title",value)}/>} {profileItem?.summary&&text(`item.${profileItem.id}.summary`,profileItem.summary,"个人简介",value=>props.onItemChange?.(intro!.id,profileItem.id,"summary",value),undefined,true)}</div><div className="general-contact-copy">{isElementVisible(document,"profile.contactTitle")&&<EditableText document={document} elementId="profile.contactTitle" selected={selectedElementId==="profile.contactTitle"} onSelect={props.onSelectElement} value={profile.contactTitle??"联系方式"} label="联系方式标题" tag="h2" onCommit={value=>props.onProfileChange?.("contactTitle",value)}/>}<div className="contact-list-wrap"><ul>{profile.location&&isElementVisible(document,"profile.location")&&<li>{text("profile.location",profile.location,"所在地",value=>props.onProfileChange?.("location",value))}</li>}{isElementVisible(document,"profile.email")&&<li>{text("profile.email",profile.email,"邮箱",value=>props.onProfileChange?.("email",value))}</li>}{profile.phone&&isElementVisible(document,"profile.phone")&&<li>{text("profile.phone",profile.phone,"电话",value=>props.onProfileChange?.("phone",value))}</li>}{profile.website&&isElementVisible(document,"profile.website")&&<li>{text("profile.website",profile.website.label,"个人链接",value=>props.onWebsiteChange?.(value))}</li>}{(profile.contacts??[]).map(contact=>isElementVisible(document,`contact.${contact.id}.value`)?<li key={contact.id}>{text(`contact.${contact.id}.value`,contact.value,"联系方式",value=>props.onContactChange?.(contact.id,"value",value))}{editable&&<button className="contact-delete" type="button" aria-label={`删除联系方式 ${contact.value}`} title="删除此联系方式" onClick={()=>props.onDeleteContact?.(contact.id)}>×</button>}</li>:null)}</ul>{editable&&<button className="contact-add" type="button" aria-label="新增联系方式" title="新增联系方式" onClick={props.onAddContact}>＋</button>}</div></div></section></>:<header className="general-continuation">{isElementVisible(document,"profile.fullName")&&<strong>{profile.fullName}</strong>}{isElementVisible(document,"profile.headline")&&<span>{profile.headline} · 第 {pageNumber} 页</span>}</header>}
-    {printBlocks?<PrintBlocks document={document} blocks={printBlocks}/>:<div className="general-body">{body.map(section=><Section key={section.id} document={document} section={section} editable={editable} selected={section.id===selectedSectionId} selectedElementId={selectedElementId} onSelect={()=>props.onSelectSection?.(section.id)} onSelectElement={props.onSelectElement} onChange={value=>props.onSectionChange?.(section.id,"title",value)} onItemChange={(item,key,value)=>props.onItemChange?.(section.id,item.id,key,value)} onAddItem={after=>props.onAddItem?.(section.id,after)} onDeleteItem={itemId=>props.onDeleteItem?.(section.id,itemId)} onAddSection={()=>props.onAddSection?.(section.id)} onDeleteSection={body.length>1?()=>props.onDeleteSection?.(section.id):undefined} onMoveItem={(from,to)=>props.onMoveItem?.(section.id,from,to)} onMoveSection={props.onMoveSection}/>)}</div>}
+    {printBlocks?<PrintBlocks document={document} blocks={printBlocks}/>:<div className="general-body">{body.map(section=><DirectSection key={section.id} document={document} section={section} editable={editable} selected={section.id===selectedSectionId} selectedElementId={selectedElementId} onSelect={()=>props.onSelectSection?.(section.id)} onSelectElement={props.onSelectElement} onChange={value=>props.onSectionChange?.(section.id,"title",value)} onItemChange={(item,key,value)=>props.onItemChange?.(section.id,item.id,key,value)} onAddItem={after=>props.onAddItem?.(section.id,after)} onDeleteItem={itemId=>props.onDeleteItem?.(section.id,itemId)} onAddSection={()=>props.onAddSection?.(section.id)} onDeleteSection={body.length>1?()=>props.onDeleteSection?.(section.id):undefined} onMoveItem={(from,to)=>props.onMoveItem?.(section.id,from,to)} onMoveSection={props.onMoveSection}/>)}</div>}
   </article>;
 }

@@ -35,14 +35,7 @@
 .template-general-verdant { padding-top: 18px; }
 .template-general-verdant .general-template-page { margin-bottom: 18px; }
 
-.template-business-ledger .resume-page { padding-top: 0 !important; }
-.template-business-ledger header { margin: 0 -16mm 7mm; padding: 12mm 16mm 7mm; min-height: 42mm; background: var(--accent); border: 0; color: white; }
-.template-business-ledger header h1,.template-business-ledger header a { color: white; }
-.template-business-ledger header a { text-decoration-color: #ffffff66; }
-.template-business-ledger .two-column .page-body { grid-template-columns: 52mm 1fr; gap: 9mm; }
-.template-business-ledger .two-column aside { border: 0; background: #eef2f5; margin: -7mm 0 -16mm -16mm; padding: 8mm 6mm 16mm 16mm; }
-.template-business-ledger .section-title { border-bottom: 2px solid var(--accent); text-transform: uppercase; letter-spacing: .08em; }
-.template-business-ledger aside .section-title { font-size: 9.5pt; }
+.template-business-ledger .centered-template-page { padding-top: 17mm; }
 
 .template-minimal-bareline { color: #171717; }
 .template-minimal-bareline header { display: block; min-height: 27mm; border-bottom: .4px solid #222; padding-bottom: 5mm; margin-bottom: 8mm; }
@@ -57,4 +50,5 @@
   .print-root { padding: 0; }
   .resume-page { margin: 0; box-shadow: none; }
   .template-general-verdant .general-template-page { margin: 0; }
+  .template-business-ledger .centered-template-page { height: 297mm; margin: 0; break-after: auto !important; page-break-after: auto !important; }
 }

@@ -11,8 +11,8 @@ test("administrator candidate workbench keeps release gated and renders all thre
   await expect(page.getByText("待确认 · 未发布 · 未上架")).toBeVisible();
   await page.screenshot({path:"test-results/candidates/general-verdant.png"});
 
-  await page.getByRole("button",{name:/候选 2.*蓝图纪事/}).click();
-  await expect(page.getByRole("heading",{name:"蓝图纪事"})).toBeVisible();
+  await page.getByRole("button",{name:/候选 2.*设计预览 02/}).click();
+  await expect(page.getByRole("heading",{name:"设计预览 02"})).toBeVisible();
   await expect(page.locator(".template-business-ledger")).toBeVisible();
   await page.screenshot({path:"test-results/candidates/business-ledger.png"});
 
