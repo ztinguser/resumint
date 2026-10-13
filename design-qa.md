@@ -2,7 +2,7 @@
 
 - Source visual truth: `C:\Users\mofang\Downloads\Template #7.png`
 - Implementation screenshot: `C:\Users\mofang\Desktop\agent\project\resumint\frontend\test-results\candidates\bareline-print.png`
-- Combined comparison: `C:\Users\mofang\Desktop\agent\project\resumint\tmp\design-qa\bareline-comparison-final.png`
+- Combined comparison: `C:\Users\mofang\Desktop\agent\project\resumint\tmp\design-qa\bareline-background-comparison.png`
 - Actual exported PDF: `C:\Users\mofang\Desktop\agent\project\resumint\tmp\pdfs\bareline-template-export.pdf`
 - Browser viewport: 1440 × 1000 px at device scale 1
 - Source pixels: 612 × 792
@@ -14,9 +14,9 @@
 - No actionable P0/P1/P2 mismatch remains.
 - Layout: the implementation preserves the reference's top-left two-line identity, narrow left rail, wider main column, generous inter-column gap, and intentionally large lower-page whitespace.
 - Typography: the project system-font stack replaces the English reference face for Chinese legibility while preserving the bold identity, compact section headings, small italic date labels, and restrained body hierarchy.
-- Colors: the warm near-white page, near-black headings, and neutral gray body copy follow the reference direction without adding decorative category color.
+- Colors: the page now uses a dedicated low-contrast wash asset with broad white zones, faint blush areas, and a trace of cool lavender. Sampled blank-page points align within roughly 0–2 RGB values at the top-center, top-right, lower-center, and lower-right comparison points.
 - Content: the English source copy is replaced with editable Chinese instance text while maintaining equivalent section types and information density.
-- Assets: the reference has no illustration, logo, icon, or portrait asset; the implementation likewise introduces none.
+- Assets: the reference has no illustration, logo, icon, or portrait asset. The only added asset is the content-free background wash at `frontend/public/resume/backgrounds/bareline-wash.png`, generated from the reference color field rather than approximated with a flat fill or CSS gradient.
 - Page ratio: the source raster is US-Letter-like, while the product exports A4. The additional vertical area is an intentional product constraint, not a visual defect.
 
 **Focused Region Evidence**
@@ -29,7 +29,10 @@ The full-size source and original-resolution implementation were inspected separ
 2. Increased Chinese body and heading sizes, shortened the header, and expanded the example copy to restore the reference rhythm.
 3. A second pass found a P1 print-only overflow risk in the left tool list and excess print spacing between side entries.
 4. Aligned the print-side entry spacing with the editor, tuned list count and spacing, and reran the full-page comparison.
-5. Final comparison found no remaining actionable P0/P1/P2 issue.
+5. User feedback identified a P1 color mismatch: the flat `#fffafa` fill did not reproduce the reference's irregular pink/lavender wash.
+6. Replaced the flat fill with a content-free background texture, then reduced its first-pass saturation after the side-by-side comparison showed excessive pink and cool-purple intensity.
+7. The final full-view comparison and sampled blank-page points confirm the corrected low-contrast wash in the template library, workbench, print view, and PDF surface.
+8. Final comparison found no remaining actionable P0/P1/P2 issue.
 
 **Required Surfaces**
 
