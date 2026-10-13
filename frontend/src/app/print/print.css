@@ -38,12 +38,8 @@
 .template-business-ledger .centered-template-page { padding-top: 17mm; }
 
 .template-minimal-bareline { color: #171717; }
-.template-minimal-bareline header { display: block; min-height: 27mm; border-bottom: .4px solid #222; padding-bottom: 5mm; margin-bottom: 8mm; }
-.template-minimal-bareline h1 { color: #111; font-size: 22pt; font-weight: 520; letter-spacing: .12em; }
-.template-minimal-bareline .headline { letter-spacing: .08em; color: #555; }
+.template-minimal-bareline .bareline-template-page { padding-top: 16mm; }
 .template-minimal-bareline a { color: #111; text-decoration-thickness: .4px; }
-.template-minimal-bareline .section-title { color: #111; border: 0; padding: 0; font-size: 9.5pt; letter-spacing: .16em; margin-top: 6mm; }
-.template-minimal-bareline .item-heading { border-top: .4px solid #bbb; padding-top: 2.5mm; }
 
 @media print {
   body { background: white; }
@@ -51,4 +47,5 @@
   .resume-page { margin: 0; box-shadow: none; }
   .template-general-verdant .general-template-page { margin: 0; }
   .template-business-ledger .centered-template-page { height: 297mm; margin: 0; break-after: auto !important; page-break-after: auto !important; }
+  .template-minimal-bareline .bareline-template-page { height: 297mm; margin: 0; break-after: auto !important; page-break-after: auto !important; }
 }

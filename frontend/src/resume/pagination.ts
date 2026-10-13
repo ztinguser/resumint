@@ -69,13 +69,13 @@ function pack(blocks: RenderBlock[], firstCapacity: number, continuationCapacity
   return pages;
 }
 
-export function paginateResume(document: ResumeDocument, capacities?:{firstMain?:number;continuationMain?:number}): RenderPage[] {
+export function paginateResume(document: ResumeDocument, capacities?:{firstMain?:number;continuationMain?:number;firstSide?:number;continuationSide?:number}): RenderPage[] {
   const visible = document.sections.filter((section) => section.visible);
   const twoColumn = document.layout.kind === "two-column";
   const main = visible.filter((section) => section.column === "main").flatMap((section) => sectionBlocks(document,section, twoColumn ? 48 : 78));
   const side = visible.filter((section) => section.column === "side").flatMap((section) => sectionBlocks(document,section, 30));
   const mainPages = pack(main, capacities?.firstMain??(twoColumn ? 47 : 49), capacities?.continuationMain??(twoColumn ? 61 : 64));
-  const sidePages = twoColumn ? pack(side, 47, 61) : [[]];
+  const sidePages = twoColumn ? pack(side, capacities?.firstSide??47, capacities?.continuationSide??61) : [[]];
   const count = Math.max(mainPages.length, sidePages.length);
   return Array.from({ length: count }, (_, index) => ({ main: mainPages[index] ?? [], side: sidePages[index] ?? [] }));
 }

@@ -1,47 +1,45 @@
-# 第二套模板设计 QA
+# 第三套模板设计 QA
 
-- Source visual truth: `C:\Users\mofang\Downloads\Template 20.png`
-- Implementation screenshot: `C:\Users\mofang\Desktop\agent\project\resumint\frontend\test-results\candidates\centered-print.png`
-- Combined comparison: `C:\Users\mofang\Desktop\agent\project\resumint\.test-tmp\design-qa\centered-comparison.png`
-- Actual exported PDF render: `C:\Users\mofang\Desktop\agent\project\resumint\tmp\pdfs\centered-template-export-final.png`
-- Viewport: A4 page at 210 × 297 mm; browser CSS output 794 × 1123 px at device scale 1
-- Source pixels: 1190 × 1684
-- Implementation pixels: 794 × 1123; normalized to 1190 × 1684 for the combined comparison
-- State: default Chinese example content, print media, first page
+- Source visual truth: `C:\Users\mofang\Downloads\Template #7.png`
+- Implementation screenshot: `C:\Users\mofang\Desktop\agent\project\resumint\frontend\test-results\candidates\bareline-print.png`
+- Combined comparison: `C:\Users\mofang\Desktop\agent\project\resumint\tmp\design-qa\bareline-comparison-final.png`
+- Actual exported PDF: `C:\Users\mofang\Desktop\agent\project\resumint\tmp\pdfs\bareline-template-export.pdf`
+- Browser viewport: 1440 × 1000 px at device scale 1
+- Source pixels: 612 × 792
+- Implementation pixels: 794 × 1123 (A4); normalized to 612 × 866 by width for the combined comparison
+- State: default Chinese example content, print media, first page, no selection or editing chrome
 
 **Findings**
 
 - No actionable P0/P1/P2 mismatch remains.
-- Typography: the implementation uses the project's available Microsoft YaHei stack for Chinese rather than the Latin face visible in the English reference. Weight, hierarchy, line height, and gray/black contrast follow the reference; the typeface difference is intentional because the delivered instance content is Chinese.
-- Spacing and layout rhythm: circular portrait size, top offset, centered identity, body start, column tracks, inter-column gap, and page margins align with the normalized reference.
-- Colors and visual tokens: white page, near-black headings, and neutral gray body copy match the source direction; no decorative category color was introduced.
-- Image quality and asset fidelity: the candidate reuses the existing content-addressed monochrome example portrait. The portrait subject differs from the reference while its crop, scale, circular mask, and tonal treatment match; this is intentional pending final material confirmation.
-- Copy and content: the source's English content was replaced with Chinese instance text while preserving the same information hierarchy and approximate density.
+- Layout: the implementation preserves the reference's top-left two-line identity, narrow left rail, wider main column, generous inter-column gap, and intentionally large lower-page whitespace.
+- Typography: the project system-font stack replaces the English reference face for Chinese legibility while preserving the bold identity, compact section headings, small italic date labels, and restrained body hierarchy.
+- Colors: the warm near-white page, near-black headings, and neutral gray body copy follow the reference direction without adding decorative category color.
+- Content: the English source copy is replaced with editable Chinese instance text while maintaining equivalent section types and information density.
+- Assets: the reference has no illustration, logo, icon, or portrait asset; the implementation likewise introduces none.
+- Page ratio: the source raster is US-Letter-like, while the product exports A4. The additional vertical area is an intentional product constraint, not a visual defect.
 
 **Focused Region Evidence**
 
-The 1190 × 1684 normalized full-page comparison keeps the portrait, header, both column headings, contact rows, education entries, employment entries, and skill list readable, so an additional crop was not required.
+The full-size source and original-resolution implementation were inspected separately for header type, both column starts, bullet rhythm, date labels, and page-end spacing. The combined comparison keeps all of those regions legible, so no additional crop was necessary.
 
 **Comparison History**
 
-1. Initial print comparison found a P1 mismatch: a legacy `business-ledger` print rule forced top padding to zero, while the workbench retained 17 mm.
-2. Removed the obsolete dark-header print rules and restored the candidate's 17 mm top padding.
-3. Post-fix automated geometry comparison confirms identical page padding, header height, column widths, gap, and name size between workbench and print view.
-4. The first real PDF export exposed a blank second page caused by the editable preview's 18 px bottom margin winning the print cascade.
-5. Added an explicit zero print margin for the centered template. The final Chromium PDF is one A4 page according to Poppler and its rendered PNG contains all expected content without clipping or overlap.
+1. The first comparison found P2 differences in body scale, right-column density, and the vertical start of content.
+2. Increased Chinese body and heading sizes, shortened the header, and expanded the example copy to restore the reference rhythm.
+3. A second pass found a P1 print-only overflow risk in the left tool list and excess print spacing between side entries.
+4. Aligned the print-side entry spacing with the editor, tuned list count and spacing, and reran the full-page comparison.
+5. Final comparison found no remaining actionable P0/P1/P2 issue.
 
-**Interaction and Runtime Evidence**
+**Required Surfaces**
 
-- Tested template-library skeleton without instance copy.
-- Tested direct editing of Chinese contact content.
-- Tested selected-element style inspection against the rendered gray value.
-- Tested workbench/print composition parity.
-- Generated and rendered the real downloaded PDF; verified one A4 page and no blank trailing page.
-- Checked the in-app browser console: no errors or warnings.
+- Template library: structure-only skeleton preview; no instance text is exposed.
+- Workbench: direct editing, selection styling, item/module addition and deletion, and drag handling use the shared editor contracts.
+- Print/PDF: editor and print geometry are parity-tested; the generated PDF is exactly one A4 page with no trailing blank page.
 
 **Follow-up Polish**
 
-- P3: revisit the exact Chinese font only if a separately licensed font asset is approved for the final published version.
-- P3: replace the temporary display name after product confirmation.
+- P3: replace the temporary Chinese display name after product confirmation.
+- P3: revisit the exact Chinese font only if a separately licensed font asset is approved.
 
 final result: passed

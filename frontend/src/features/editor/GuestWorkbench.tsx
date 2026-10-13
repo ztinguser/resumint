@@ -16,6 +16,9 @@ import { GeneralTemplatePage } from "@/resume/GeneralTemplatePage";
 import { createGeneralDocument, GENERAL_TEMPLATE_ID } from "@/resume/templates/general";
 import {CenteredTemplatePage}from"@/resume/CenteredTemplatePage";
 import{CENTERED_TEMPLATE_ID,createCenteredDocument}from"@/resume/templates/centered";
+import{BarelineTemplatePage}from"@/resume/BarelineTemplatePage";
+import{BARELINE_TEMPLATE_ID,createBarelineDocument}from"@/resume/templates/bareline";
+import{paginateBarelineResume}from"@/resume/bareline-pagination";
 import {duplicateSectionAfter,insertItemAfter,moveById,readRenderedElementStyle,removeById}from"./direct-canvas";
 import {hideElement}from"@/resume/element-visibility";
 import{paginateGeneralResume}from"@/resume/general-pagination";
@@ -28,7 +31,7 @@ type PublicTemplate=SwitchTemplate;
 
 export function GuestWorkbench({templateId,initialDraftId}:{templateId:string;initialDraftId?:string}) {
   const router=useRouter();
-  const initialDirectDocument=templateId===GENERAL_TEMPLATE_ID?createGeneralDocument:templateId===CENTERED_TEMPLATE_ID?createCenteredDocument:null;
+  const initialDirectDocument=templateId===GENERAL_TEMPLATE_ID?createGeneralDocument:templateId===CENTERED_TEMPLATE_ID?createCenteredDocument:templateId===BARELINE_TEMPLATE_ID?createBarelineDocument:null;
   const [history, dispatch] = useReducer(historyReducer, undefined, () => ({ past: [], present: initialDirectDocument&&!initialDraftId?initialDirectDocument():createBenchmarkDocument(), future: [] }));
   const [selectedSectionId, setSelectedSectionId] = useState(initialDirectDocument?"":"work-experience");
   const [selectedElement,setSelectedElement]=useState<{id:string;label:string;renderedStyle?:Required<ElementStyle>}|null>(null);
@@ -58,7 +61,7 @@ export function GuestWorkbench({templateId,initialDraftId}:{templateId:string;in
   const document = dragDocument ?? history.present;
   const selected = document.sections.find((section) => section.id === selectedSectionId) ?? document.sections[0];
   const issues = useMemo(() => describeLayoutIssues(document), [document]);
-  const pages = useMemo(() => document.template.id===GENERAL_TEMPLATE_ID?paginateGeneralResume(document).length:paginateResume(document).length, [document]);
+  const pages = useMemo(() => document.template.id===GENERAL_TEMPLATE_ID?paginateGeneralResume(document).length:document.template.id===BARELINE_TEMPLATE_ID?paginateBarelineResume(document).length:paginateResume(document).length, [document]);
 
   useEffect(() => {
     const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ""; };
@@ -71,7 +74,7 @@ export function GuestWorkbench({templateId,initialDraftId}:{templateId:string;in
 
   useEffect(() => {
     if(initialDraftId)return;
-    if(templateId===GENERAL_TEMPLATE_ID||templateId===CENTERED_TEMPLATE_ID)return;
+    if(templateId===GENERAL_TEMPLATE_ID||templateId===CENTERED_TEMPLATE_ID||templateId===BARELINE_TEMPLATE_ID)return;
     let active=true;
     fetch(`/api/templates/${encodeURIComponent(templateId)}`,{cache:"no-store"}).then(async(response)=>{if(!response.ok)throw new Error("所选模板不可用");return response.json() as Promise<{id:string;version:number}>;}).then((template)=>{if(!active)return;const next=createBenchmarkDocument();next.template={id:template.id,version:template.version};dispatch({type:"commit",document:next});setTemplateReady(true);}).catch((error)=>{if(active)setNotice(error instanceof Error?error.message:"模板加载失败");});
     return()=>{active=false;};
@@ -138,8 +141,9 @@ export function GuestWorkbench({templateId,initialDraftId}:{templateId:string;in
   const websiteError=document.profile.website&&!/^https?:\/\//i.test(document.profile.website.href)?"链接需以 http:// 或 https:// 开头":"";
   const exporting=exportState.includes("…");
   const saveLabel=({unsaved:"未保存",saving:"保存中…",saved:"已保存",dirty:"有未保存更改",failed:"保存失败"} as const)[saveState.status];
-  const directCanvas=[GENERAL_TEMPLATE_ID,CENTERED_TEMPLATE_ID].includes(templateId)||[GENERAL_TEMPLATE_ID,CENTERED_TEMPLATE_ID].includes(document.template.id);
-  const DirectTemplateComponent=document.template.id===CENTERED_TEMPLATE_ID?CenteredTemplatePage:GeneralTemplatePage;
+  const directTemplateIds=[GENERAL_TEMPLATE_ID,CENTERED_TEMPLATE_ID,BARELINE_TEMPLATE_ID];
+  const directCanvas=directTemplateIds.includes(templateId)||directTemplateIds.includes(document.template.id);
+  const DirectTemplateComponent=document.template.id===CENTERED_TEMPLATE_ID?CenteredTemplatePage:document.template.id===BARELINE_TEMPLATE_ID?BarelineTemplatePage:GeneralTemplatePage;
   const addDirectItem=(sectionId:string,afterItemId?:string)=>updateSection(sectionId,section=>{section.items=insertItemAfter(section.items,afterItemId,newId("item"));});
   const deleteDirectItem=(sectionId:string,itemId:string)=>updateSection(sectionId,section=>{section.items=removeById(section.items,itemId);});
   const moveDirectSection=(fromId:string,toId:string)=>commit(next=>{next.sections=moveById(next.sections,fromId,toId);});
