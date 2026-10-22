@@ -2,7 +2,7 @@ import type {ResumeDocument} from "../model";
 import {GENERAL_AVATAR_PATH} from "./general";
 
 export const CENTERED_TEMPLATE_ID="business-ledger";
-export const CENTERED_TEMPLATE_NAME="设计预览 02（待命名）";
+export const CENTERED_TEMPLATE_NAME="灰度之间";
 
 export function createCenteredDocument():ResumeDocument{
   return {

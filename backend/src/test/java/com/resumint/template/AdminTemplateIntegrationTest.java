@@ -31,6 +31,7 @@ import tools.jackson.databind.ObjectMapper;
 @Import(LocalSmsTestConfiguration.class)
 @EnabledIfSystemProperty(named="resumint.mysql.it",matches="true")
 class AdminTemplateIntegrationTest {
+    private static final String TEST_TEMPLATE_ID="test-release-template";
     @DynamicPropertySource static void database(DynamicPropertyRegistry registry){
         registry.add("spring.datasource.url",()->"jdbc:mysql://127.0.0.1:33306/resumint?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC");
         registry.add("spring.datasource.username",()->"resumint");registry.add("spring.datasource.password",()->"resumint");
@@ -39,7 +40,8 @@ class AdminTemplateIntegrationTest {
 
     @BeforeEach void clean(){
         jdbc.update("DELETE FROM template_favorites");jdbc.update("DELETE FROM resumes");jdbc.update("DELETE FROM template_audit_log");jdbc.update("DELETE FROM template_drafts");
-        jdbc.update("DELETE FROM template_versions WHERE template_id<>'benchmark-template'");jdbc.update("DELETE FROM templates WHERE id<>'benchmark-template'");
+        jdbc.update("DELETE FROM template_versions WHERE template_id NOT IN ('benchmark-template','general-verdant','business-ledger','minimal-bareline')");
+        jdbc.update("DELETE FROM templates WHERE id NOT IN ('benchmark-template','general-verdant','business-ledger','minimal-bareline')");
         jdbc.update("DELETE FROM trusted_devices");jdbc.update("DELETE FROM auth_sessions");jdbc.update("DELETE FROM sms_verification_attempts");jdbc.update("DELETE FROM users");
         jdbc.update("UPDATE templates SET listed=TRUE,current_version=1,display_name='排版基准模板' WHERE id='benchmark-template'");
     }
@@ -54,34 +56,34 @@ class AdminTemplateIntegrationTest {
         jdbc.update("UPDATE users SET role='ADMIN' WHERE id=?",adminId.toString());
         mvc.perform(post("/api/admin/templates").cookie(admin.session,admin.csrf).header("X-XSRF-TOKEN",admin.csrf.getValue())
                 .contentType(MediaType.APPLICATION_JSON).content(createBody("远山青")))
-                .andExpect(status().isCreated()).andExpect(jsonPath("$.id").value("general-verdant")).andExpect(jsonPath("$.revision").value(1));
+                .andExpect(status().isCreated()).andExpect(jsonPath("$.id").value(TEST_TEMPLATE_ID)).andExpect(jsonPath("$.revision").value(1));
 
-        mvc.perform(put("/api/admin/templates/general-verdant/draft").cookie(admin.session,admin.csrf).header("X-XSRF-TOKEN",admin.csrf.getValue())
+        mvc.perform(put("/api/admin/templates/"+TEST_TEMPLATE_ID+"/draft").cookie(admin.session,admin.csrf).header("X-XSRF-TOKEN",admin.csrf.getValue())
                 .contentType(MediaType.APPLICATION_JSON).content(saveBody(1,"verdant")))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.revision").value(2));
-        mvc.perform(post("/api/admin/templates/general-verdant/publish").cookie(admin.session,admin.csrf).header("X-XSRF-TOKEN",admin.csrf.getValue())
+        mvc.perform(post("/api/admin/templates/"+TEST_TEMPLATE_ID+"/publish").cookie(admin.session,admin.csrf).header("X-XSRF-TOKEN",admin.csrf.getValue())
                 .contentType(MediaType.APPLICATION_JSON).content("{\"expectedRevision\":2}"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.version").value(1));
-        mvc.perform(put("/api/admin/templates/general-verdant/listing").cookie(admin.session,admin.csrf).header("X-XSRF-TOKEN",admin.csrf.getValue())
+        mvc.perform(put("/api/admin/templates/"+TEST_TEMPLATE_ID+"/listing").cookie(admin.session,admin.csrf).header("X-XSRF-TOKEN",admin.csrf.getValue())
                 .contentType(MediaType.APPLICATION_JSON).content("{\"listed\":true,\"version\":1}"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.listed").value(true));
 
-        mvc.perform(put("/api/admin/templates/general-verdant/draft").cookie(admin.session,admin.csrf).header("X-XSRF-TOKEN",admin.csrf.getValue())
+        mvc.perform(put("/api/admin/templates/"+TEST_TEMPLATE_ID+"/draft").cookie(admin.session,admin.csrf).header("X-XSRF-TOKEN",admin.csrf.getValue())
                 .contentType(MediaType.APPLICATION_JSON).content(saveBody(3,"verdant-v2"))).andExpect(status().isOk()).andExpect(jsonPath("$.revision").value(4));
-        mvc.perform(post("/api/admin/templates/general-verdant/publish").cookie(admin.session,admin.csrf).header("X-XSRF-TOKEN",admin.csrf.getValue())
+        mvc.perform(post("/api/admin/templates/"+TEST_TEMPLATE_ID+"/publish").cookie(admin.session,admin.csrf).header("X-XSRF-TOKEN",admin.csrf.getValue())
                 .contentType(MediaType.APPLICATION_JSON).content("{\"expectedRevision\":4}"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.version").value(2));
-        assertThat(jdbc.queryForObject("SELECT JSON_UNQUOTE(JSON_EXTRACT(config_json,'$.visualKey')) FROM template_versions WHERE template_id='general-verdant' AND version=1",String.class)).isEqualTo("verdant");
+        assertThat(jdbc.queryForObject("SELECT JSON_UNQUOTE(JSON_EXTRACT(config_json,'$.visualKey')) FROM template_versions WHERE template_id=? AND version=1",String.class,TEST_TEMPLATE_ID)).isEqualTo("verdant");
 
-        mvc.perform(put("/api/admin/templates/general-verdant/name").cookie(admin.session,admin.csrf).header("X-XSRF-TOKEN",admin.csrf.getValue())
+        mvc.perform(put("/api/admin/templates/"+TEST_TEMPLATE_ID+"/name").cookie(admin.session,admin.csrf).header("X-XSRF-TOKEN",admin.csrf.getValue())
                 .contentType(MediaType.APPLICATION_JSON).content("{\"displayName\":\"青岚序\"}"))
-                .andExpect(status().isOk()).andExpect(jsonPath("$.id").value("general-verdant")).andExpect(jsonPath("$.displayName").value("青岚序"));
-        mvc.perform(put("/api/admin/templates/general-verdant/listing").cookie(admin.session,admin.csrf).header("X-XSRF-TOKEN",admin.csrf.getValue())
+                .andExpect(status().isOk()).andExpect(jsonPath("$.id").value(TEST_TEMPLATE_ID)).andExpect(jsonPath("$.displayName").value("青岚序"));
+        mvc.perform(put("/api/admin/templates/"+TEST_TEMPLATE_ID+"/listing").cookie(admin.session,admin.csrf).header("X-XSRF-TOKEN",admin.csrf.getValue())
                 .contentType(MediaType.APPLICATION_JSON).content("{\"listed\":false}"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.listed").value(false));
-        mvc.perform(get("/api/templates/general-verdant")).andExpect(status().isNotFound());
-        mvc.perform(get("/api/templates/general-verdant/versions/1")).andExpect(status().isOk()).andExpect(jsonPath("$.name").value("青岚序")).andExpect(jsonPath("$.version").value(1));
-        mvc.perform(get("/api/admin/templates/general-verdant/audit").cookie(admin.session)).andExpect(status().isOk()).andExpect(jsonPath("$[0].action").value("UNLISTED"));
+        mvc.perform(get("/api/templates/"+TEST_TEMPLATE_ID)).andExpect(status().isNotFound());
+        mvc.perform(get("/api/templates/"+TEST_TEMPLATE_ID+"/versions/1")).andExpect(status().isOk()).andExpect(jsonPath("$.name").value("青岚序")).andExpect(jsonPath("$.version").value(1));
+        mvc.perform(get("/api/admin/templates/"+TEST_TEMPLATE_ID+"/audit").cookie(admin.session)).andExpect(status().isOk()).andExpect(jsonPath("$[0].action").value("UNLISTED"));
     }
 
     @Test void adminRoleDoesNotGrantAccessToAnotherUsersResume() throws Exception {
@@ -94,6 +96,22 @@ class AdminTemplateIntegrationTest {
         mvc.perform(get("/api/resumes/"+id).cookie(admin.session)).andExpect(status().isNotFound());
     }
 
+    @Test void placeholderDisplayNameCannotEnterThePublicationWorkflow() throws Exception {
+        Session admin=register("13500135113");
+        jdbc.update("UPDATE users SET role='ADMIN' WHERE phone_e164='+8613500135113'");
+        mvc.perform(post("/api/admin/templates").cookie(admin.session,admin.csrf).header("X-XSRF-TOKEN",admin.csrf.getValue())
+                .contentType(MediaType.APPLICATION_JSON).content(createBody("设计预览 02")))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("TEMPLATE_NAME_PLACEHOLDER"));
+    }
+
+    @Test void confirmedFormalTemplatesArePublishedAndListed() throws Exception {
+        mvc.perform(get("/api/templates"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[?(@.id == 'general-verdant')].name").value("白昼来信"))
+                .andExpect(jsonPath("$[?(@.id == 'business-ledger')].name").value("灰度之间"))
+                .andExpect(jsonPath("$[?(@.id == 'minimal-bareline')].name").value("负空间"));
+    }
+
     private Session register(String phone)throws Exception{
         MvcResult sent=mvc.perform(post("/api/auth/sms-code").contentType(MediaType.APPLICATION_JSON).content("{\"phone\":\""+phone+"\",\"purpose\":\"LOGIN\"}"))
                 .andExpect(status().isOk()).andReturn();
@@ -102,7 +120,7 @@ class AdminTemplateIntegrationTest {
                 .andExpect(status().isOk()).andReturn();
         return new Session(cookie(login,"resumint_session"),cookie(login,"XSRF-TOKEN"));
     }
-    private String createBody(String name){return "{\"id\":\"general-verdant\",\"displayName\":\""+name+"\",\"tags\":[\"结构清晰\"],\"initialConfig\":{}}";}
+    private String createBody(String name){return "{\"id\":\""+TEST_TEMPLATE_ID+"\",\"displayName\":\""+name+"\",\"tags\":[\"结构清晰\"],\"initialConfig\":{}}";}
     private String saveBody(long revision,String visual){return "{\"expectedRevision\":"+revision+",\"schemaVersion\":\"1.0\",\"config\":{\"visualKey\":\""+visual+"\",\"layoutTree\":{\"children\":[]},\"componentCatalog\":[{\"kind\":\"header\"}],\"bindings\":[{\"kind\":\"custom-fields\",\"target\":\"sections.*.items.*.fields\",\"emptyBehavior\":\"omit\"}],\"fallback\":{\"unknownModule\":\"通用模块\",\"unknownField\":\"自定义字段\"}},\"componentVersions\":{\"header\":1},\"assetManifest\":[]}";}
     private static Cookie cookie(MvcResult result,String name){return Arrays.stream(result.getResponse().getCookies()).filter(value->name.equals(value.getName())).findFirst().orElseThrow();}
     private record Session(Cookie session,Cookie csrf){}

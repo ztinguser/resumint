@@ -3,7 +3,7 @@ import{expect,test}from"@playwright/test";
 test("template library shows the third candidate as a structure-only skeleton",async({page})=>{
   await page.route("**/api/templates",route=>route.fulfill({status:200,contentType:"application/json",body:"[]"}));
   await page.goto("/templates");
-  const card=page.locator(".template-card").filter({hasText:"设计预览 03（待命名）"});
+  const card=page.locator(".template-card").filter({hasText:"负空间"});
   await expect(card.locator(".bareline-skeleton")).toBeVisible();
   await expect(card.locator(".bareline-skeleton")).not.toContainText("林清远");
   await expect(card.getByText("待确认",{exact:true})).toBeVisible();
@@ -13,6 +13,15 @@ test("third candidate supports direct editing, additions, styling and a one-page
   await page.goto("/editor?template=minimal-bareline&qa=bareline-candidate");
   const resume=page.locator(".bareline-template-page");
   await expect(resume).toBeVisible();
+  const canvasControls=page.locator(".workbench-topbar .topbar-preview-controls");
+  await expect(canvasControls).toBeVisible();
+  await expect(canvasControls).toContainText("导出约 1 页");
+  await expect(page.locator(".preview-panel>.preview-toolbar")).toHaveCount(0);
+  expect(await page.locator(".preview-scroll").evaluate(element=>element.getBoundingClientRect().top-element.parentElement!.getBoundingClientRect().top)).toBeLessThan(2);
+  await page.getByRole("button",{name:"放大画布"}).click();
+  await expect(page.getByRole("button",{name:"恢复 100%"})).toHaveText("110%");
+  await page.getByRole("button",{name:"恢复 100%"}).click();
+  await expect(page.getByRole("button",{name:"恢复 100%"})).toHaveText("100%");
   await expect(resume.getByText("林清远，",{exact:true})).toBeVisible();
   await expect(resume.getByText("专业技能",{exact:true})).toBeVisible();
   await expect(resume.getByText("常用工具",{exact:true})).toBeVisible();

@@ -1,7 +1,7 @@
 import type {ResumeDocument} from "../model";
 
 export const BARELINE_TEMPLATE_ID="minimal-bareline";
-export const BARELINE_TEMPLATE_NAME="设计预览 03（待命名）";
+export const BARELINE_TEMPLATE_NAME="负空间";
 
 export function createBarelineDocument():ResumeDocument{
   return {

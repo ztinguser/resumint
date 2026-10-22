@@ -1,2 +1,2 @@
 import { GuestWorkbench } from "@/features/editor/GuestWorkbench";
-export default async function EditorPage({searchParams}:{searchParams:Promise<{template?:string;draft?:string}>}){const query=await searchParams;return <GuestWorkbench templateId={query.template??"benchmark-template"} initialDraftId={query.draft}/>;}
+export default async function EditorPage({searchParams}:{searchParams:Promise<{template?:string;version?:string;draft?:string}>}){const query=await searchParams;const parsedVersion=Number(query.version);return <GuestWorkbench templateId={query.template??"general-verdant"} templateVersion={Number.isInteger(parsedVersion)&&parsedVersion>0?parsedVersion:undefined} initialDraftId={query.draft}/>;}

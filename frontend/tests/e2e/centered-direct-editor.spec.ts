@@ -3,7 +3,7 @@ import{expect,test}from"@playwright/test";
 test("template library shows the second candidate as a structure-only skeleton",async({page})=>{
   await page.route("**/api/templates",route=>route.fulfill({status:200,contentType:"application/json",body:"[]"}));
   await page.goto("/templates");
-  const card=page.locator(".template-card").filter({hasText:"设计预览 02（待命名）"});
+  const card=page.locator(".template-card").filter({hasText:"灰度之间"});
   await expect(card.locator(".centered-skeleton")).toBeVisible();
   await expect(card.locator(".centered-skeleton")).not.toContainText("林清远");
   await expect(card.getByText("待确认",{exact:true})).toBeVisible();

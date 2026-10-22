@@ -88,6 +88,47 @@ class PlaywrightPdfIntegrationTest {
     }
 
     @Test
+    void barelineExportKeepsContentThatFollowsAddedItems(@TempDir Path outputDirectory) throws Exception {
+        ObjectMapper objectMapper = new ObjectMapper();
+        var document = objectMapper.readTree("""
+                {
+                  "schemaVersion":"1.0",
+                  "documentId":"bareline-added-content",
+                  "template":{"id":"minimal-bareline","version":1},
+                  "locale":"zh-CN",
+                  "profile":{"fullName":"林清远，","headline":"体验设计师","email":"qingyuan.lin@example.com","contactTitle":"联系方式","contacts":[
+                    {"id":"website","label":"个人主页","value":"qingyuan.design"},
+                    {"id":"email","label":"邮箱","value":"qingyuan.lin@example.com"},
+                    {"id":"phone","label":"电话","value":"138 0000 2026"}
+                  ]},
+                  "layout":{"kind":"two-column","page":{"size":"A4","marginMm":14},"theme":{"fontFamily":"Arial","accentColor":"#202020","fontSizePt":8.5,"lineHeight":1.48},"decorations":[]},
+                  "sections":[
+                    {"id":"skills","type":"skills","title":"专业技能","column":"side","visible":true,"items":[]},
+                    {"id":"tools","type":"skills","title":"常用工具","column":"side","visible":true,"items":[]}
+                  ]
+                }
+                """);
+        var skills = (tools.jackson.databind.node.ArrayNode) document.path("sections").get(0).path("items");
+        for (int index = 0; index < 24; index++) {
+            skills.add(objectMapper.createObjectNode()
+                    .put("id", "skill-" + index)
+                    .put("title", "适应力与持续学习" + "（新增）".repeat(index)));
+        }
+        var tools = (tools.jackson.databind.node.ArrayNode) document.path("sections").get(1).path("items");
+        int toolIndex = 0;
+        for (String name : List.of("Figma", "Sketch", "Adobe Creative Suite", "Photoshop", "Illustrator", "Axure", "Principle", "Notion", "Webflow")) {
+            tools.add(objectMapper.createObjectNode().put("id", "tool-" + toolIndex++).put("title", name));
+        }
+
+        Path pdf = outputDirectory.resolve("bareline-added-content.pdf");
+        new PlaywrightPdfRenderer(ExportLimits.m1Defaults(PRINT_BASE)).render(new ExportSnapshot(document), pdf);
+        try (PDDocument exported = Loader.loadPDF(pdf.toFile())) {
+            assertThat(new PDFTextStripper().getText(exported).replaceAll("\\s+", ""))
+                    .contains("适应力与持续学习" + "（新增）".repeat(23), "Notion", "Webflow");
+        }
+    }
+
+    @Test
     void fixedFixturesHaveStablePagesTextLinksAndScreenshots(@TempDir Path outputDirectory) throws Exception {
         var renderer = new PlaywrightPdfRenderer(ExportLimits.m1Defaults(PRINT_BASE));
         for (Fixture fixture : FIXTURES) {

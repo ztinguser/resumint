@@ -10,6 +10,7 @@ import{paginateGeneralResume}from"./general-pagination";
 import{themeVariables}from"@/features/editor/direct-canvas";
 import{CenteredTemplatePage}from"./CenteredTemplatePage";
 import{CENTERED_TEMPLATE_ID}from"./templates/centered";
+import{paginateCenteredResume}from"./centered-pagination";
 import{BarelineTemplatePage}from"./BarelineTemplatePage";
 import{BARELINE_TEMPLATE_ID}from"./templates/bareline";
 import{paginateBarelineResume}from"./bareline-pagination";
@@ -51,7 +52,7 @@ export function ResumePrintDocument({ initialDocument }: { initialDocument: Resu
 
   const templateClass = `template-${document.template.id.replace(/[^a-z0-9-]/g, "")}`;
   if(document.template.id===GENERAL_TEMPLATE_ID){const generalPages=paginateGeneralResume(document);return <main className={`print-root ${templateClass}`} style={themeVariables(document)} data-issues={issues.join(",")}>{generalPages.map((page,index)=><GeneralTemplatePage document={document} printBlocks={page.main} pageNumber={index+1} key={index}/>)}</main>;}
-  if(document.template.id===CENTERED_TEMPLATE_ID)return <main className={`print-root ${templateClass}`} style={themeVariables(document)} data-issues={issues.join(",")}>{pages.map((page,index)=><CenteredTemplatePage document={document} printPage={page} pageNumber={index+1} key={index}/>)}</main>;
+  if(document.template.id===CENTERED_TEMPLATE_ID){const centeredPages=paginateCenteredResume(document);return <main className={`print-root ${templateClass}`} style={themeVariables(document)} data-issues={issues.join(",")}>{centeredPages.map((page,index)=><CenteredTemplatePage document={document} printPage={page} pageNumber={index+1} key={index}/>)}</main>;}
   if(document.template.id===BARELINE_TEMPLATE_ID){const barelinePages=paginateBarelineResume(document);return <main className={`print-root ${templateClass}`} style={themeVariables(document)} data-issues={issues.join(",")}>{barelinePages.map((page,index)=><BarelineTemplatePage document={document} printPage={page} pageNumber={index+1} key={index}/>)}</main>;}
   return <main className={`print-root ${templateClass}`} style={{ "--accent": document.layout.theme.accentColor, "--font": `'${document.layout.theme.fontFamily}', Arial, 'Microsoft YaHei', sans-serif`, "--body-font-size": `${document.layout.theme.fontSizePt ?? 8.5}pt`, "--body-line-height": document.layout.theme.lineHeight ?? 1.48 } as React.CSSProperties} data-issues={issues.join(",")}>
     {pages.map((page, index) => <article className={`resume-page ${twoColumn ? "two-column" : "single-column"}`} style={{ padding: `${document.layout.page.marginMm}mm` }} data-page={index + 1} key={index}>

@@ -16,6 +16,7 @@ import { GeneralTemplatePage } from "@/resume/GeneralTemplatePage";
 import { createGeneralDocument, GENERAL_TEMPLATE_ID } from "@/resume/templates/general";
 import {CenteredTemplatePage}from"@/resume/CenteredTemplatePage";
 import{CENTERED_TEMPLATE_ID,createCenteredDocument}from"@/resume/templates/centered";
+import{paginateCenteredResume}from"@/resume/centered-pagination";
 import{BarelineTemplatePage}from"@/resume/BarelineTemplatePage";
 import{BARELINE_TEMPLATE_ID,createBarelineDocument}from"@/resume/templates/bareline";
 import{paginateBarelineResume}from"@/resume/bareline-pagination";
@@ -29,10 +30,10 @@ const newId = (prefix: string) => `${prefix}-${crypto.randomUUID()}`;
 type Draft={id:string;title:string;templateId:string;templateVersion:number;schemaVersion:string;document:ResumeDocument;revision:number;updatedAt:string};
 type PublicTemplate=SwitchTemplate;
 
-export function GuestWorkbench({templateId,initialDraftId}:{templateId:string;initialDraftId?:string}) {
+export function GuestWorkbench({templateId,templateVersion,initialDraftId}:{templateId:string;templateVersion?:number;initialDraftId?:string}) {
   const router=useRouter();
   const initialDirectDocument=templateId===GENERAL_TEMPLATE_ID?createGeneralDocument:templateId===CENTERED_TEMPLATE_ID?createCenteredDocument:templateId===BARELINE_TEMPLATE_ID?createBarelineDocument:null;
-  const [history, dispatch] = useReducer(historyReducer, undefined, () => ({ past: [], present: initialDirectDocument&&!initialDraftId?initialDirectDocument():createBenchmarkDocument(), future: [] }));
+  const [history, dispatch] = useReducer(historyReducer, undefined, () => {const present=initialDirectDocument&&!initialDraftId?initialDirectDocument():createBenchmarkDocument();if(initialDirectDocument&&templateVersion)present.template.version=templateVersion;return {past:[],present,future:[]};});
   const [selectedSectionId, setSelectedSectionId] = useState(initialDirectDocument?"":"work-experience");
   const [selectedElement,setSelectedElement]=useState<{id:string;label:string;renderedStyle?:Required<ElementStyle>}|null>(null);
   const [selectedDecorationId, setSelectedDecorationId] = useState("header-divider");
@@ -61,7 +62,7 @@ export function GuestWorkbench({templateId,initialDraftId}:{templateId:string;in
   const document = dragDocument ?? history.present;
   const selected = document.sections.find((section) => section.id === selectedSectionId) ?? document.sections[0];
   const issues = useMemo(() => describeLayoutIssues(document), [document]);
-  const pages = useMemo(() => document.template.id===GENERAL_TEMPLATE_ID?paginateGeneralResume(document).length:document.template.id===BARELINE_TEMPLATE_ID?paginateBarelineResume(document).length:paginateResume(document).length, [document]);
+  const pages = useMemo(() => document.template.id===GENERAL_TEMPLATE_ID?paginateGeneralResume(document).length:document.template.id===CENTERED_TEMPLATE_ID?paginateCenteredResume(document).length:document.template.id===BARELINE_TEMPLATE_ID?paginateBarelineResume(document).length:paginateResume(document).length, [document]);
 
   useEffect(() => {
     const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ""; };
@@ -159,6 +160,7 @@ export function GuestWorkbench({templateId,initialDraftId}:{templateId:string;in
     <header className="workbench-topbar">
       <a className="brand" href="/templates">Resumint</a><span className="divider" />
       <input aria-label="简历名称" className="document-title title-input" maxLength={120} value={documentTitle} onChange={event=>{setDocumentTitle(event.target.value);setSaveState(current=>edited(current));}}/><span className={`unsaved save-${saveState.status}`}><i /> {saveLabel}</span>
+      <div className="topbar-preview-controls"><span>导出约 {pages} 页</span><button aria-label="缩小画布" onClick={()=>setZoom(Math.max(.5,Number((zoom-.1).toFixed(1))))}>−</button><button className="zoom-value" aria-label="恢复 100%" onClick={()=>setZoom(1)}>{Math.round(zoom*100)}%</button><button aria-label="放大画布" onClick={()=>setZoom(Math.min(1.4,Number((zoom+.1).toFixed(1))))}>＋</button></div>
       <div className="topbar-actions"><button aria-label="撤销" disabled={!history.past.length} onClick={() => historyAction("undo")}>↶</button><button aria-label="重做" disabled={!history.future.length} onClick={() => historyAction("redo")}>↷</button><button className="secondary" onClick={()=>void openTemplateSwitch()}>切换模板</button><button className="secondary" disabled={saveState.status==="saving"} onClick={()=>void saveDraft()}>保存</button>{exporting&&<button className="secondary" onClick={()=>exportAbortRef.current?.abort()}>取消导出</button>}<button className="primary" disabled={exporting||!templateReady||!!emailError||!!websiteError} onClick={startExport}>{templateReady?exportState:"加载模板…"}</button><div className="account-anchor"><button aria-label="账号菜单" onClick={()=>user?router.push("/account"):setLoginOpen(value=>!value)}>{user?user.maskedPhone:"登录"}</button><LoginBubble open={loginOpen} onClose={closeLogin} onLogin={value=>{setUser(value);sessionStorage.removeItem("resumint-login-dismissed");}}/></div>{user&&<button className="logout-link" onClick={requestLogout}>退出</button>}</div>
     </header>
     {!user&&guestWarningOpen&&<div className="guest-warning" role="status"><span>游客内容仅保存在当前页面；<button onClick={()=>setLoginOpen(true)}>登录后可手动保存</button></span><button className="guest-warning-close" aria-label="关闭游客提示" title="关闭" onClick={()=>setGuestWarningOpen(false)}>×</button></div>}
@@ -190,7 +192,6 @@ export function GuestWorkbench({templateId,initialDraftId}:{templateId:string;in
         </section>}
       </aside>}
       <section className="preview-panel">
-        <div className="preview-toolbar"><span>导出约 {pages} 页</span><button aria-label="缩小画布" onClick={()=>setZoom(Math.max(.5,Number((zoom-.1).toFixed(1))))}>−</button><button className="zoom-value" aria-label="恢复 100%" onClick={()=>setZoom(1)}>{Math.round(zoom*100)}%</button><button aria-label="放大画布" onClick={()=>setZoom(Math.min(1.4,Number((zoom+.1).toFixed(1))))}>＋</button></div>
         <div className="preview-scroll"><div className={`preview-stage ${directCanvas?"direct-stage":""}`} style={directCanvas?{width:`${210*3.7795*zoom}px`}:{width:`${210*3.7795*zoom}px`,height:`${297*3.7795*pages*zoom+Math.max(0,pages-1)*18*zoom}px`}}><div className="preview-scale" style={directCanvas?{zoom}:{transform:`scale(${zoom})`}}>{directCanvas?<DirectTemplateComponent document={document} editable selectedSectionId={selectedSectionId} selectedElementId={selectedElement?.id} onClearSelection={()=>{setSelectedSectionId("");setSelectedElement(null);}} onSelectSection={id=>{setSelectedSectionId(id);setSelectedElement(null);}} onSelectElement={(id,label,renderedStyle)=>{setSelectedSectionId("");setSelectedElement({id,label,renderedStyle});}} onProfileChange={(key,value)=>commit(next=>{next.profile[key]=value;})} onWebsiteChange={value=>commit(next=>{next.profile.website={label:value,href:next.profile.website?.href??"https://example.com"};})} onContactChange={(id,key,value)=>commit(next=>{const contact=next.profile.contacts?.find(item=>item.id===id);if(contact)contact[key]=value;})} onAddContact={addDirectContact} onDeleteContact={deleteDirectContact} onSectionChange={(sectionId,_key,value)=>updateSection(sectionId,section=>{section.title=value;})} onItemChange={(sectionId,itemId,key,value)=>updateItem(sectionId,itemId,item=>{item[key]=value;})} onAddItem={addDirectItem} onDeleteItem={deleteDirectItem} onAddSection={addDirectSection} onDeleteSection={deleteDirectSection} onMoveSection={moveDirectSection} onMoveItem={moveDirectItem}/>:<ResumePrintDocument initialDocument={document} key={JSON.stringify(document)}/>} {!directCanvas&&<>{dragDocument&&<><i className="alignment-guide vertical"/><i className="alignment-guide horizontal"/></>}{document.layout.decorations.map((item)=><button aria-label={`拖动装饰 ${item.id}`} className={`decoration-handle ${selectedDecorationId===item.id?"selected":""}`} disabled={item.locked} key={item.id} style={{left:`${item.xMm}mm`,top:`${item.yMm}mm`,width:`${Math.max(item.widthMm,5)}mm`,height:`${Math.max(item.heightMm,5)}mm`}} onPointerDown={(event)=>beginDecorationDrag(event,item.id)} onPointerMove={moveDecoration} onPointerUp={endDecorationDrag}/>)}</>}</div></div></div>
         <div className="layout-status"><strong>{pages} 页 A4</strong><span>{issues.length ? `${issues.length} 个排版问题` : "未发现排版问题"}</span>{issues.map((issue)=><button key={`${issue.code}-${issue.objectId}`} onClick={()=>setSelectedDecorationId(issue.objectId)}>{issue.code} · 第 {issue.page} 页 · {issue.objectId}</button>)}</div>
       </section>

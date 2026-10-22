@@ -31,7 +31,15 @@ const textUnits = (text: string, charsPerLine: number) => Math.max(2, Math.ceil(
 function sectionBlocks(document:ResumeDocument,section: ResumeSection, charsPerLine: number): RenderBlock[] {
   const blocks: RenderBlock[] = isElementVisible(document,`section.${section.id}.title`)?[{ key: `${section.id}-title`, kind: "section", text: section.title, units: 4 }]:[];
   for (const item of section.items) {
-    if(["title","subtitle","date"].some(key=>isElementVisible(document,`item.${item.id}.${key}`)&&!!item[key as keyof ResumeItem]))blocks.push({ key: `${item.id}-heading`, kind: "item-heading", item, units: 4 });
+    const visibleHeading = (["title","subtitle","date"] as const)
+      .filter(key=>isElementVisible(document,`item.${item.id}.${key}`)&&!!item[key])
+      .map(key=>item[key] as string);
+    if(visibleHeading.length)blocks.push({
+      key: `${item.id}-heading`,
+      kind: "item-heading",
+      item,
+      units: Math.max(4,textUnits(visibleHeading.join(" "),charsPerLine)),
+    });
     for (const [index, text] of (isElementVisible(document,`item.${item.id}.summary`)?splitText(item.summary ?? "", charsPerLine * 5):[]).entries()) {
       blocks.push({ key: `${item.id}-summary-${index}`, kind: "paragraph", text, units: textUnits(text, charsPerLine) });
     }
@@ -53,12 +61,22 @@ function sectionBlocks(document:ResumeDocument,section: ResumeSection, charsPerL
   return blocks;
 }
 
-function pack(blocks: RenderBlock[], firstCapacity: number, continuationCapacity: number): RenderBlock[][] {
+function pack(blocks: RenderBlock[], firstCapacity: number, continuationCapacity: number,keepItemsTogether=false): RenderBlock[][] {
   if (!blocks.length) return [[]];
   const pages: RenderBlock[][] = [[]];
   let used = 0;
-  for (const block of blocks) {
-    const capacity = pages.length === 1 ? firstCapacity : continuationCapacity;
+  for (let index=0;index<blocks.length;index+=1) {
+    const block=blocks[index];
+    let capacity = pages.length === 1 ? firstCapacity : continuationCapacity;
+    if(keepItemsTogether&&block.kind==="item-heading"&&pages.at(-1)!.length){
+      let itemUnits=block.units;
+      for(let next=index+1;next<blocks.length&&!(["section","item-heading"] as RenderBlock["kind"][]).includes(blocks[next].kind);next+=1)itemUnits+=blocks[next].units;
+      if(itemUnits<=continuationCapacity&&used+itemUnits>capacity){
+        pages.push([]);
+        used=0;
+        capacity=continuationCapacity;
+      }
+    }
     if (pages.at(-1)!.length && used + block.units > capacity) {
       pages.push([]);
       used = 0;
@@ -69,13 +87,13 @@ function pack(blocks: RenderBlock[], firstCapacity: number, continuationCapacity
   return pages;
 }
 
-export function paginateResume(document: ResumeDocument, capacities?:{firstMain?:number;continuationMain?:number;firstSide?:number;continuationSide?:number}): RenderPage[] {
+export function paginateResume(document: ResumeDocument, capacities?:{firstMain?:number;continuationMain?:number;firstSide?:number;continuationSide?:number;keepItemsTogether?:boolean}): RenderPage[] {
   const visible = document.sections.filter((section) => section.visible);
   const twoColumn = document.layout.kind === "two-column";
-  const main = visible.filter((section) => section.column === "main").flatMap((section) => sectionBlocks(document,section, twoColumn ? 48 : 78));
-  const side = visible.filter((section) => section.column === "side").flatMap((section) => sectionBlocks(document,section, 30));
-  const mainPages = pack(main, capacities?.firstMain??(twoColumn ? 47 : 49), capacities?.continuationMain??(twoColumn ? 61 : 64));
-  const sidePages = twoColumn ? pack(side, capacities?.firstSide??47, capacities?.continuationSide??61) : [[]];
+  const main = visible.filter((section) => section.column === "main").flatMap((section) => sectionBlocks(document,section, twoColumn ? 34 : 78));
+  const side = visible.filter((section) => section.column === "side").flatMap((section) => sectionBlocks(document,section, 13));
+  const mainPages = pack(main, capacities?.firstMain??(twoColumn ? 47 : 49), capacities?.continuationMain??(twoColumn ? 61 : 64),capacities?.keepItemsTogether);
+  const sidePages = twoColumn ? pack(side, capacities?.firstSide??47, capacities?.continuationSide??61,capacities?.keepItemsTogether) : [[]];
   const count = Math.max(mainPages.length, sidePages.length);
   return Array.from({ length: count }, (_, index) => ({ main: mainPages[index] ?? [], side: sidePages[index] ?? [] }));
 }

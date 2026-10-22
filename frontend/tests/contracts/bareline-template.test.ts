@@ -3,10 +3,10 @@ import{validateResumeDocument}from"../../src/resume/validation";
 import{BARELINE_TEMPLATE_ID,BARELINE_TEMPLATE_NAME,createBarelineDocument}from"../../src/resume/templates/bareline";
 
 describe("第三套高留白双栏模板候选稿",()=>{
-  it("保留稳定模板 ID，并在确认前使用待命名展示名",()=>{
+  it("保留稳定模板 ID，并使用独立的正式展示名",()=>{
     const document=createBarelineDocument();
     expect(BARELINE_TEMPLATE_ID).toBe("minimal-bareline");
-    expect(BARELINE_TEMPLATE_NAME).toContain("待命名");
+    expect(BARELINE_TEMPLATE_NAME).toBe("负空间");
     expect(document.template).toEqual({id:BARELINE_TEMPLATE_ID,version:1});
     expect(document.layout.kind).toBe("two-column");
     expect(document.profile.portrait).toBeUndefined();

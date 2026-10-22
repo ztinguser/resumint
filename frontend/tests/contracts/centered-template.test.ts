@@ -4,10 +4,10 @@ import{CENTERED_TEMPLATE_ID,CENTERED_TEMPLATE_NAME,createCenteredDocument}from".
 import{GENERAL_AVATAR_PATH}from"../../src/resume/templates/general";
 
 describe("第二套居中双栏模板候选稿",()=>{
-  it("保留稳定模板 ID，并在确认前使用待命名展示名",()=>{
+  it("保留稳定模板 ID，并使用独立的正式展示名",()=>{
     const document=createCenteredDocument();
     expect(CENTERED_TEMPLATE_ID).toBe("business-ledger");
-    expect(CENTERED_TEMPLATE_NAME).toContain("待命名");
+    expect(CENTERED_TEMPLATE_NAME).toBe("灰度之间");
     expect(document.template).toEqual({id:CENTERED_TEMPLATE_ID,version:1});
     expect(document.layout.kind).toBe("two-column");
     expect(document.profile.portrait?.src).toBe(GENERAL_AVATAR_PATH);

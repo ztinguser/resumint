@@ -28,7 +28,7 @@ class MySqlContractIntegrationTest {
     }
     @Autowired TemplateMapper templates; @Autowired ExportCoordinator coordinator; @Autowired ExportJobRepository repository; @Autowired JdbcTemplate jdbc; @Autowired ObjectMapper objectMapper;
     @BeforeEach void clean(){jdbc.update("DELETE FROM export_jobs");jdbc.update("DELETE FROM resumes");}
-    @Test void migrationPublishesImmutableBenchmarkTemplate(){var rows=templates.findPublic();assertThat(rows).hasSize(1);assertThat(rows.getFirst().id()).isEqualTo("benchmark-template");assertThat(rows.getFirst().version()).isEqualTo(1);assertThat(rows.getFirst().configJson()).contains("editableParameters");}
+    @Test void migrationPublishesOnlyTheThreeFormalTemplates(){var rows=templates.findPublic();assertThat(rows).extracting(TemplateMapper.TemplateRecord::id).containsExactly("general-verdant","business-ledger","minimal-bareline");assertThat(rows).allSatisfy(row->{assertThat(row.version()).isEqualTo(1);assertThat(row.configJson()).contains("editableParameters");});}
     @Test void mysqlQueuePersistsLeaseIdempotencyAndGuestMetadataWithoutDrafts() throws Exception {
         var document=objectMapper.readTree("""
             {"schemaVersion":"1.0","documentId":"mysql-contract","template":{"id":"benchmark-template","version":1},"locale":"zh-CN","profile":{"fullName":"游客","headline":"测试","email":"guest@example.com"},"layout":{"kind":"single","page":{"size":"A4","marginMm":16},"theme":{"fontFamily":"Arial","accentColor":"#202221"},"decorations":[]},"sections":[{"id":"test-section","type":"custom","title":"测试","column":"main","visible":true,"items":[{"id":"test-item","title":"MySQL 队列"}]}]}

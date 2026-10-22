@@ -26,7 +26,13 @@ public class TemplateFavoriteController {
 
     @GetMapping("/favorites")
     List<String> favorites(@AuthenticationPrincipal AuthPrincipal principal){
-        return jdbc.query("SELECT template_id FROM template_favorites WHERE user_id=? ORDER BY created_at DESC",(rs,row)->rs.getString(1),principal.userId().toString());
+        return jdbc.query("""
+                SELECT f.template_id
+                FROM template_favorites f
+                JOIN templates t ON t.id=f.template_id AND t.listed=TRUE
+                WHERE f.user_id=?
+                ORDER BY f.created_at DESC
+                """,(rs,row)->rs.getString(1),principal.userId().toString());
     }
 
     @PutMapping("/{templateId}/favorite")
