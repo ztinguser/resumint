@@ -1,0 +1,53 @@
+# Required release identity and secrets (replace every value; never commit real values)
+SPRING_PROFILES_ACTIVE=release,api
+DB_URL=jdbc:mysql://127.0.0.1:3306/resumint?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC
+DB_USERNAME=resumint
+DB_PASSWORD=replace-with-secret
+AUTH_PHONE_LOOKUP_SECRETS=current-secret-at-least-32-characters,previous-secret-during-rotation
+EXPORT_CREDENTIAL_SECRETS=current-secret-at-least-32-characters,previous-secret-until-export-retention-expires
+RESUMINT_OPS_TOKEN=replace-with-random-secret-at-least-32-characters
+AUTH_COOKIE_SECURE=true
+
+# SMS and cost guardrails
+SMS_PROVIDER=alibaba
+ALIBABA_CLOUD_ACCESS_KEY_ID=<secret-manager-reference>
+ALIBABA_CLOUD_ACCESS_KEY_SECRET=<secret-manager-reference>
+ALIBABA_CLOUD_SMS_SIGN_NAME=<approved-sign-name>
+ALIBABA_CLOUD_SMS_LOGIN_TEMPLATE_CODE=<approved-template-code>
+ALIBABA_CLOUD_SMS_PASSWORD_RESET_TEMPLATE_CODE=<approved-template-code>
+ALIBABA_CLOUD_SMS_PHONE_CHANGE_OLD_TEMPLATE_CODE=<approved-template-code>
+ALIBABA_CLOUD_SMS_PHONE_CHANGE_NEW_TEMPLATE_CODE=<approved-template-code>
+SMS_CODE_MINUTES=5
+SMS_COOLDOWN=60s
+SMS_ATTEMPT_TTL=10m
+SMS_PHONE_HOUR_LIMIT=5
+SMS_PHONE_DAY_LIMIT=10
+SMS_SOURCE_HOUR_LIMIT=20
+SMS_DEVICE_HOUR_LIMIT=10
+SMS_SESSION_HOUR_LIMIT=10
+SMS_GLOBAL_MINUTE_LIMIT=200
+SMS_VERIFY_FAILURE_LIMIT=5
+SMS_DAILY_COST_WARNING_COUNT=<release-owner-decision-required>
+
+# Export limits and retention
+EXPORT_WORKER_ENABLED=false
+EXPORT_WORKER_CONCURRENCY=1
+EXPORT_QUEUE_CAPACITY=20
+EXPORT_MAX_SNAPSHOT_BYTES=524288
+EXPORT_RENDER_TIMEOUT=45s
+EXPORT_LEASE_DURATION=60s
+EXPORT_RESULT_RETENTION=15m
+EXPORT_CREDENTIAL_TTL=20m
+EXPORT_ORPHAN_GRACE=30m
+EXPORT_STORAGE_ROOT=D:/resumint/private-export
+PRINT_BASE_URL=http://127.0.0.1:3100
+
+# Account/session retention
+AUTH_SESSION_TTL=12h
+AUTH_TRUSTED_DEVICE_TTL=180d
+AUTH_INACTIVITY_RISK_AGE=180d
+
+# Operational retention applied by scheduled jobs/runbook
+BACKUP_RETENTION_DAYS=<release-owner-decision-required>
+SECURITY_AUDIT_RETENTION_DAYS=<release-owner-decision-required>
+APPLICATION_LOG_RETENTION_DAYS=<release-owner-decision-required>

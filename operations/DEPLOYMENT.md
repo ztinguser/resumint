@@ -1,0 +1,11 @@
+# V1 部署需求
+
+V1 使用同机部署的 Next.js、Spring Boot API、独立 Spring Boot Worker、MySQL 8.4 与私有文件目录。API 和 Worker 使用同一数据库与 `EXPORT_STORAGE_ROOT`，但 API 配置 `application-api.yml`，Worker 配置 `application-worker.yml`。Worker 初始并发固定为 1。
+
+最低运行要求：Java 21、Node.js 24、MySQL 8.4、Chromium/Playwright 1.63 对应浏览器、可写且不由 Web 服务器直接公开的绝对文件目录，以及包含中文字体的固定渲染环境。反向代理必须限制请求体、只允许 HTTPS，并保留 `X-Forwarded-For` 的可信代理边界。
+
+发布配置以 `deploy/release-config.example` 为清单。`release` profile 会拒绝开发默认密钥、不安全 Cookie、非阿里云短信 provider 和相对导出目录。真实密码、RAM AccessKey、短信模板、运维令牌和应用密钥只能通过部署密钥管理注入。
+
+API 健康检查为 `GET /api/health`。运维状态为 `GET /api/ops/status`，必须携带 `X-Ops-Token`；响应只有计数、阈值和磁盘余量，不包含手机号、简历正文、图片或请求体。短信日发送量首次达到 `SMS_DAILY_COST_WARNING_COUNT` 时写入持久告警并输出 `SMS_DAILY_COST_ALERT` 日志，日志平台据此触发通知。
+
+发布前分别构建 `frontend` 的生产包与 `backend` 的可执行 JAR；启动顺序为 MySQL、前端打印服务、API、Worker。不得将 Worker 暴露为 HTTP 服务。域名、服务器规格、上线地区与预算不在 V1 代码交付内。
