@@ -1,8 +1,33 @@
 resumint:
   auth:
     cookie-secure: true
+    session-ttl: ${AUTH_SESSION_TTL}
+    trusted-device-ttl: ${AUTH_TRUSTED_DEVICE_TTL}
+    inactivity-risk-age: ${AUTH_INACTIVITY_RISK_AGE}
   sms:
     provider: alibaba
+    code-minutes: ${SMS_CODE_MINUTES}
+    cooldown: ${SMS_COOLDOWN}
+    attempt-ttl: ${SMS_ATTEMPT_TTL}
+    phone-hour-limit: ${SMS_PHONE_HOUR_LIMIT}
+    phone-day-limit: ${SMS_PHONE_DAY_LIMIT}
+    source-hour-limit: ${SMS_SOURCE_HOUR_LIMIT}
+    device-hour-limit: ${SMS_DEVICE_HOUR_LIMIT}
+    session-hour-limit: ${SMS_SESSION_HOUR_LIMIT}
+    global-minute-limit: ${SMS_GLOBAL_MINUTE_LIMIT}
+    verify-failure-limit: ${SMS_VERIFY_FAILURE_LIMIT}
+    daily-cost-warning-count: ${SMS_DAILY_COST_WARNING_COUNT}
+  resume:
+    max-document-bytes: ${RESUME_MAX_DOCUMENT_BYTES}
   export:
     worker-concurrency: 1
+    queue-capacity: ${EXPORT_QUEUE_CAPACITY}
+    max-snapshot-bytes: ${EXPORT_MAX_SNAPSHOT_BYTES}
+    render-timeout: ${EXPORT_RENDER_TIMEOUT}
+    lease-duration: ${EXPORT_LEASE_DURATION}
+    result-retention: ${EXPORT_RESULT_RETENTION}
+    credential-ttl: ${EXPORT_CREDENTIAL_TTL}
+    orphan-grace: ${EXPORT_ORPHAN_GRACE}
+    storage-root: ${EXPORT_STORAGE_ROOT}
+    print-base-url: ${PRINT_BASE_URL}
 

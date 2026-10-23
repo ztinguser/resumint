@@ -12,6 +12,7 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.Base64;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import tools.jackson.databind.JsonNode;
@@ -60,6 +61,15 @@ class ExportPipelineTest {
         var repository=new InMemoryExportJobRepository();var storage=new ExportStorage(directory,objectMapper);var tiny=new ExportLimits(URI.create("http://127.0.0.1:3100"),1,1,8,Duration.ofSeconds(45),Duration.ofSeconds(60),Duration.ofMinutes(15),Duration.ofMinutes(20),Duration.ofMinutes(30));var coordinator=coordinator(repository,storage,tiny);
         assertThatThrownBy(()->coordinator.submit("stable-key-04",new ExportSnapshot(objectMapper.readTree("{}")))).isInstanceOf(ApiException.class).hasMessageContaining("missing");
         assertThatThrownBy(()->coordinator.submit("stable-key-05",new ExportSnapshot(validDocument()))).isInstanceOf(ApiException.class).hasMessageContaining("限制");
+    }
+
+    @Test void twoMegabytePortraitFitsTheFourMegabyteDocumentEnvelope(@TempDir java.nio.file.Path directory) throws Exception {
+        byte[] png=Base64.getDecoder().decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=");
+        byte[] upload=new byte[2*1024*1024];System.arraycopy(png,0,upload,0,png.length);
+        var document=(tools.jackson.databind.node.ObjectNode)validDocument();
+        document.withObject("/profile").putObject("portrait").put("src","data:image/png;base64,"+Base64.getEncoder().encodeToString(upload)).put("alt","头像").put("slotSizeMm",24);
+        var repository=new InMemoryExportJobRepository();var storage=new ExportStorage(directory,objectMapper);
+        assertThat(coordinator(repository,storage,limits()).submit("large-portrait-key",new ExportSnapshot(document)).job().status()).isEqualTo(ExportStatus.QUEUED);
     }
 
     @Test void compensationCleanupRemovesOnlyOldUnreferencedFiles(@TempDir java.nio.file.Path directory) throws Exception {

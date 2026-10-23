@@ -34,6 +34,7 @@ import tools.jackson.databind.ObjectMapper;
 
 @SpringBootTest(properties={
         "resumint.sms.provider=fake", "resumint.sms.cooldown=60s", "resumint.sms.phone-hour-limit=5",
+        "resumint.sms.daily-cost-warning-count=1",
         "resumint.auth.session-ttl=12h", "resumint.export.worker-enabled=false",
         "resumint.auth.phone-lookup-secrets=new-phone-lookup-secret-for-test-32-characters,old-phone-lookup-secret-for-test-32-characters"
 })
@@ -54,6 +55,20 @@ class AccountIntegrationTest {
         jdbc.update("DELETE FROM template_favorites"); jdbc.update("DELETE FROM resumes"); jdbc.update("DELETE FROM trusted_devices");
         jdbc.update("DELETE FROM auth_sessions"); jdbc.update("DELETE FROM sms_verification_attempts"); jdbc.update("DELETE FROM users");
         jdbc.update("DELETE FROM security_audit_events");
+        jdbc.update("DELETE FROM operational_alerts");
+    }
+
+    @Test void smsCostAlertIsPersistentAndOpsStatusRequiresToken() throws Exception {
+        sendCode("18800188000","LOGIN").andExpect(status().isOk());
+        sendCode("18700187000","LOGIN").andExpect(status().isOk());
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM operational_alerts WHERE alert_type='SMS_DAILY_COST'",Integer.class)).isOne();
+        assertThat(jdbc.queryForObject("SELECT observed_value FROM operational_alerts WHERE alert_type='SMS_DAILY_COST'",Long.class)).isEqualTo(1L);
+        mvc.perform(get("/api/ops/status").header("X-Ops-Token","wrong"))
+                .andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("OPS_TOKEN_INVALID"));
+        String statusBody=mvc.perform(get("/api/ops/status").header("X-Ops-Token","dev-only-ops-token-change-me"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.smsCostAlertedToday").value(true))
+                .andExpect(jsonPath("$.smsDailyCostWarningCount").value(1)).andReturn().getResponse().getContentAsString();
+        assertThat(statusBody).doesNotContain("18800188000","18700187000","phone","resume");
     }
 
     @Test void smsRegistrationIsOneTimeRateLimitedAndNeverStoresCode() throws Exception {

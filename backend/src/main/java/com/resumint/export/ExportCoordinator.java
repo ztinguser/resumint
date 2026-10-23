@@ -23,9 +23,10 @@ public final class ExportCoordinator {
         if(key==null || key.length()<8 || key.length()>128) throw new ApiException(HttpStatus.BAD_REQUEST,"INVALID_IDEMPOTENCY_KEY","幂等键长度必须为 8 到 128 个字符");
         var existing=repository.findByIdempotencyKey(key);
         if(existing.isPresent()) return submission(existing.get());
-        try { schema.validateTopLevel(snapshot.document()); } catch(IllegalArgumentException e) { throw new ApiException(HttpStatus.BAD_REQUEST,"INVALID_DOCUMENT",e.getMessage()); }
         int bytes=objectMapper.writeValueAsBytes(snapshot.document()).length;
         if(bytes>limits.maxSnapshotBytes()) throw new ApiException(HttpStatus.PAYLOAD_TOO_LARGE,"EXPORT_LIMIT_EXCEEDED","文档快照超过导出限制",Map.of("limit","maxSnapshotBytes","allowed",limits.maxSnapshotBytes(),"actual",bytes));
+        try { schema.validateTopLevel(snapshot.document()); ResumeDocumentResourcePolicy.validate(snapshot.document()); }
+        catch(IllegalArgumentException e) { throw new ApiException(HttpStatus.BAD_REQUEST,"INVALID_DOCUMENT",e.getMessage()); }
         if(repository.activeCount()>=limits.queueCapacity()) throw new ApiException(HttpStatus.TOO_MANY_REQUESTS,"EXPORT_QUEUE_FULL","导出队列已满",Map.of("limit","queueCapacity","allowed",limits.queueCapacity()));
         Instant now=Instant.now(clock); UUID id=UUID.randomUUID(); String token=credentials.issue(id); String ref=storage.writeSnapshot(id,snapshot.document());
         try { return new Submission(repository.insert(ExportJob.queued(id,key,credentials.digest(token),ref,now,now.plus(limits.credentialTtl()))),token); }

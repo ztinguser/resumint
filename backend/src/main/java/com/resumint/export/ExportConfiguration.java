@@ -24,6 +24,10 @@ public class ExportConfiguration {
             @Value("${resumint.export.credential-ttl}") Duration credentialTtl,
             @Value("${resumint.export.orphan-grace}") Duration orphanGrace) {
         if (workerConcurrency != 1) throw new IllegalArgumentException("initial worker concurrency must remain 1");
+        if (queueCapacity < 1 || maxSnapshotBytes < 1) throw new IllegalArgumentException("export capacity limits must be positive");
+        if (renderTimeout.isZero() || renderTimeout.isNegative() || leaseDuration.isZero() || leaseDuration.isNegative()
+                || resultRetention.isZero() || resultRetention.isNegative() || credentialTtl.isZero() || credentialTtl.isNegative()
+                || orphanGrace.isZero() || orphanGrace.isNegative()) throw new IllegalArgumentException("export durations must be positive");
         return new ExportLimits(printBaseUrl, workerConcurrency, queueCapacity, maxSnapshotBytes,
                 renderTimeout, leaseDuration, resultRetention, credentialTtl, orphanGrace);
     }

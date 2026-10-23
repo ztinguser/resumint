@@ -15,7 +15,7 @@ public record ExportLimits(
         Duration orphanGrace) {
 
     public static ExportLimits m1Defaults(URI printBaseUrl) {
-        return new ExportLimits(printBaseUrl, 1, 20, 524_288,
+        return new ExportLimits(printBaseUrl, 1, 20, 4_194_304,
                 Duration.ofSeconds(45), Duration.ofSeconds(60), Duration.ofMinutes(15), Duration.ofMinutes(20), Duration.ofMinutes(30));
     }
 }
