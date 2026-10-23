@@ -28,7 +28,7 @@ final class AlibabaSmsProvider implements SmsProvider {
             @Value("${resumint.sms.phone-change-old-template-code}") String phoneChangeOldTemplateCode,
             @Value("${resumint.sms.phone-change-new-template-code}") String phoneChangeNewTemplateCode,
             @Value("${resumint.sms.scheme-name}") String schemeName,
-            @Value("${resumint.auth.phone-lookup-secret}") String phoneLookupSecret,
+            @Value("${resumint.auth.phone-lookup-secrets}") String phoneLookupSecrets,
             @Value("${resumint.sms.code-minutes}") long codeMinutes) throws Exception {
         String accessKeyId = System.getenv("ALIBABA_CLOUD_ACCESS_KEY_ID");
         String accessKeySecret = System.getenv("ALIBABA_CLOUD_ACCESS_KEY_SECRET");
@@ -37,7 +37,7 @@ final class AlibabaSmsProvider implements SmsProvider {
                 || blank(phoneChangeOldTemplateCode) || blank(phoneChangeNewTemplateCode)) {
             throw new IllegalStateException("Alibaba SMS requires environment credentials, sign name and all purpose-specific template codes");
         }
-        if (phoneLookupSecret.startsWith("dev-only-")) {
+        if (phoneLookupSecrets.split(",")[0].trim().startsWith("dev-only-")) {
             throw new IllegalStateException("Alibaba SMS requires a non-default phone lookup secret");
         }
         Config config = new Config().setAccessKeyId(accessKeyId).setAccessKeySecret(accessKeySecret).setEndpoint(endpoint);

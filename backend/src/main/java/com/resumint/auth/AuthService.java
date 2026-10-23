@@ -40,13 +40,13 @@ public class AuthService {
     LoginResult smsLogin(UUID attemptId, String phone, String code, String trustedDeviceToken) {
         SmsVerificationService.VerifiedPhone verified = sms.verify(attemptId, phone, "LOGIN", code);
         Instant now = clock.instant();
-        var existing = repository.userByPhoneHash(verified.phoneHash());
+        var existing = userByPhone(verified.phone());
         AuthRepository.UserRow user;
         boolean registered = existing.isEmpty();
         if (registered) {
             user = repository.createUser(verified.phone(), verified.phoneHash(), now);
         } else {
-            user = existing.orElseThrow();
+            user = migratePhoneHash(existing.orElseThrow(),now);
             boolean trusted = repository.trustedDevice(user.id(), trustedDeviceToken, now);
             boolean inactive = user.lastLoginAt() == null || user.lastLoginAt().isBefore(now.minus(inactivityRiskAge));
             if (!trusted || inactive) {
@@ -61,8 +61,9 @@ public class AuthService {
     LoginResult passwordLogin(String rawPhone, String password) {
         String phone = PhoneNumbers.normalize(rawPhone);
         Instant now = clock.instant();
-        AuthRepository.UserRow user = repository.userByPhoneHash(sms.phoneHash(phone))
+        AuthRepository.UserRow user = userByPhone(phone)
                 .orElseThrow(AuthService::invalidCredentials);
+        user=migratePhoneHash(user,now);
         if (user.passwordHash() == null || !passwordEncoder.matches(password == null ? "" : password, user.passwordHash())) throw invalidCredentials();
         return establish(user, now, false);
     }
@@ -112,7 +113,7 @@ public class AuthService {
         }
         Instant now = clock.instant();
         audit.record("USER", userId, "ACCOUNT_DELETED", userId, "{}", now);
-        repository.deleteAccount(userId, sms.phoneHash(user.phone()));
+        repository.deleteAccount(userId, sms.phoneHashes(user.phone()));
     }
 
     @Transactional(noRollbackFor=ApiException.class)
@@ -149,6 +150,15 @@ public class AuthService {
 
     AuthRepository.UserRow requireUser(UUID userId) {
         return repository.userById(userId).orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "SESSION_EXPIRED", "登录已过期"));
+    }
+
+    private java.util.Optional<AuthRepository.UserRow> userByPhone(String phone){
+        for(String hash:sms.phoneHashes(phone)){var user=repository.userByPhoneHash(hash);if(user.isPresent())return user;}
+        return java.util.Optional.empty();
+    }
+    private AuthRepository.UserRow migratePhoneHash(AuthRepository.UserRow user,Instant now){
+        String active=sms.phoneHash(user.phone());if(active.equals(user.phoneHash()))return user;
+        repository.updatePhoneHash(user.id(),active,now);return repository.userById(user.id()).orElseThrow();
     }
 
     private LoginResult establish(AuthRepository.UserRow user, Instant now, boolean registered) {

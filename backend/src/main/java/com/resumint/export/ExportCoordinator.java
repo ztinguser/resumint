@@ -37,6 +37,6 @@ public final class ExportCoordinator {
         return job;
     }
     public ExportJob cancel(UUID id,String credential) { authorized(id,credential); return repository.cancel(id,Instant.now(clock)); }
-    private Submission submission(ExportJob job) { return new Submission(job,credentials.issue(job.id())); }
+    private Submission submission(ExportJob job) { return new Submission(job,credentials.issue(job.id(),job.credentialDigest())); }
     public record Submission(ExportJob job,String credential) { }
 }

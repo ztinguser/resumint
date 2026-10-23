@@ -73,6 +73,17 @@ class ExportPipelineTest {
         assertThat(orphan).doesNotExist();assertThat(recent).exists();assertThat(storage.exists(submitted.job().snapshotRef())).isTrue();
     }
 
+    @Test void rotatedCredentialKeyRingKeepsExistingJobsReachable() {
+        var jobId=java.util.UUID.randomUUID();
+        var oldKeys=new ExportCredentialService("old-export-credential-secret-32-characters");
+        String oldCredential=oldKeys.issue(jobId);String digest=oldKeys.digest(oldCredential);
+        var rotated=new ExportCredentialService("new-export-credential-secret-32-characters,old-export-credential-secret-32-characters");
+        assertThat(rotated.issue(jobId,digest)).isEqualTo(oldCredential);
+        assertThat(rotated.issue(jobId)).isNotEqualTo(oldCredential);
+        assertThatThrownBy(()->new ExportCredentialService("new-export-credential-secret-32-characters").issue(jobId,digest))
+                .isInstanceOf(IllegalStateException.class).hasMessageContaining("no longer present");
+    }
+
     private ExportCoordinator coordinator(ExportJobRepository repository,ExportStorage storage,ExportLimits limits){return new ExportCoordinator(repository,new ResumeDocumentSchema(objectMapper),limits,objectMapper,fixedClock(),storage,new ExportCredentialService(SECRET));}
     private ExportLimits limits(){return ExportLimits.m1Defaults(URI.create("http://127.0.0.1:3100"));}
     private JsonNode validDocument() throws Exception{return objectMapper.readTree("""

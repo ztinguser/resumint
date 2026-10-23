@@ -31,6 +31,7 @@ resumint:
     password-min-length: ${AUTH_PASSWORD_MIN_LENGTH:6}
     password-max-length: ${AUTH_PASSWORD_MAX_LENGTH:72}
     phone-lookup-secret: ${AUTH_PHONE_LOOKUP_SECRET:dev-only-phone-lookup-secret-change-me}
+    phone-lookup-secrets: ${AUTH_PHONE_LOOKUP_SECRETS:${resumint.auth.phone-lookup-secret}}
     cookie-secure: ${AUTH_COOKIE_SECURE:false}
   sms:
     provider: ${SMS_PROVIDER:disabled}
@@ -66,6 +67,7 @@ resumint:
     credential-ttl: ${EXPORT_CREDENTIAL_TTL:20m}
     orphan-grace: ${EXPORT_ORPHAN_GRACE:30m}
     credential-secret: ${EXPORT_CREDENTIAL_SECRET:dev-only-export-credential-secret-change-me}
+    credential-secrets: ${EXPORT_CREDENTIAL_SECRETS:${resumint.export.credential-secret}}
     repository: mysql
     storage-root: ${EXPORT_STORAGE_ROOT:${java.io.tmpdir}/resumint-export}
 

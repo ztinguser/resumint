@@ -36,7 +36,7 @@ public class ExportConfiguration {
     @Bean ResumeDocumentSchema resumeDocumentSchema(ObjectMapper objectMapper) { return new ResumeDocumentSchema(objectMapper); }
     @Bean PdfRenderer pdfRenderer(ExportLimits limits) { return new PlaywrightPdfRenderer(limits); }
     @Bean ExportStorage exportStorage(@Value("${resumint.export.storage-root}") Path root,ObjectMapper objectMapper) { return new ExportStorage(root,objectMapper); }
-    @Bean ExportCredentialService exportCredentialService(@Value("${resumint.export.credential-secret}") String secret) { return new ExportCredentialService(secret); }
+    @Bean ExportCredentialService exportCredentialService(@Value("${resumint.export.credential-secrets}") String secrets) { return new ExportCredentialService(secrets); }
     @Bean ExportCoordinator exportCoordinator(ExportJobRepository repository, ResumeDocumentSchema schema,
             ExportLimits limits, ObjectMapper objectMapper, Clock clock,ExportStorage storage,ExportCredentialService credentials) {
         return new ExportCoordinator(repository, schema, limits, objectMapper, clock,storage,credentials);

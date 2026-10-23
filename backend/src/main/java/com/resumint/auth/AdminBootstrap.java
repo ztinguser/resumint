@@ -36,8 +36,9 @@ class AdminBootstrap implements ApplicationRunner {
         if(configuredPhone==null||configuredPhone.isBlank())throw new IllegalStateException("administrator phone is required for the requested operation");
         if(!RECOVERY_CONFIRMATION.equals(confirmation))throw new IllegalStateException("administrator operation requires the documented one-time confirmation");
         String phone=PhoneNumbers.normalize(configuredPhone);
-        AuthRepository.UserRow user=repository.userByPhoneHash(sms.phoneHash(phone))
-                .orElseThrow(()->new ApiException(HttpStatus.NOT_FOUND,"ADMIN_ACCOUNT_NOT_FOUND","管理员账号必须先完成手机号注册"));
+        AuthRepository.UserRow user=null;
+        for(String hash:sms.phoneHashes(phone)){var found=repository.userByPhoneHash(hash);if(found.isPresent()){user=found.get();break;}}
+        if(user==null)throw new ApiException(HttpStatus.NOT_FOUND,"ADMIN_ACCOUNT_NOT_FOUND","管理员账号必须先完成手机号注册");
         if("bootstrap".equals(operation)&&repository.adminCount()>0)throw new IllegalStateException("bootstrap is only allowed when no administrator exists");
         int changed=repository.promoteAdmin(user.id(),clock.instant());
         audit.record("OFFLINE_OPERATOR",null,"bootstrap".equals(operation)?"ADMIN_BOOTSTRAPPED":"ADMIN_RECOVERED",user.id(),

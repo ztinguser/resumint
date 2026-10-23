@@ -6,6 +6,8 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
+import java.util.Arrays;
+import java.util.List;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -21,7 +23,7 @@ public class SmsVerificationService {
     private final AuthRepository repository;
     private final SmsProvider provider;
     private final Clock clock;
-    private final String lookupSecret;
+    private final List<String> lookupSecrets;
     private final Duration cooldown;
     private final Duration attemptTtl;
     private final int phoneHourLimit;
@@ -34,7 +36,7 @@ public class SmsVerificationService {
     private final int dailyCostWarningCount;
 
     SmsVerificationService(AuthRepository repository, SmsProvider provider, Clock clock,
-            @Value("${resumint.auth.phone-lookup-secret}") String lookupSecret,
+            @Value("${resumint.auth.phone-lookup-secrets}") String lookupSecrets,
             @Value("${resumint.sms.cooldown}") Duration cooldown,
             @Value("${resumint.sms.attempt-ttl}") Duration attemptTtl,
             @Value("${resumint.sms.phone-hour-limit}") int phoneHourLimit,
@@ -45,7 +47,9 @@ public class SmsVerificationService {
             @Value("${resumint.sms.global-minute-limit}") int globalMinuteLimit,
             @Value("${resumint.sms.verify-failure-limit}") int verifyFailureLimit,
             @Value("${resumint.sms.daily-cost-warning-count}") int dailyCostWarningCount) {
-        this.repository = repository; this.provider = provider; this.clock = clock; this.lookupSecret = lookupSecret;
+        this.repository = repository; this.provider = provider; this.clock = clock;
+        this.lookupSecrets = Arrays.stream(lookupSecrets.split(",")).map(String::trim).filter(value->!value.isEmpty()).toList();
+        if(this.lookupSecrets.isEmpty()||this.lookupSecrets.stream().anyMatch(value->value.length()<32))throw new IllegalArgumentException("phone lookup key ring contains an invalid secret");
         this.cooldown = cooldown; this.attemptTtl = attemptTtl; this.phoneHourLimit = phoneHourLimit;
         this.phoneDayLimit = phoneDayLimit; this.sourceHourLimit = sourceHourLimit;
         this.deviceHourLimit = deviceHourLimit; this.sessionHourLimit = sessionHourLimit;
@@ -114,7 +118,8 @@ public class SmsVerificationService {
         return new VerifiedPhone(phone, phoneHash, attempt.maskedPhone());
     }
 
-    String phoneHash(String phone) { return SecretDigests.hmac(lookupSecret, phone); }
+    String phoneHash(String phone) { return SecretDigests.hmac(lookupSecrets.getFirst(), phone); }
+    List<String> phoneHashes(String phone) { return lookupSecrets.stream().map(secret->SecretDigests.hmac(secret,phone)).distinct().toList(); }
     private void warnOnDailyCost(Instant now) {
         Instant dayStart = now.atZone(ZoneOffset.UTC).truncatedTo(ChronoUnit.DAYS).toInstant();
         long sentToday = repository.sentSince(dayStart);
@@ -123,7 +128,7 @@ public class SmsVerificationService {
             log.warn("SMS_DAILY_COST_ALERT sent={} threshold={} windowStart={}", sentToday, dailyCostWarningCount, dayStart);
         }
     }
-    private String hashSource(String source) { return source == null || source.isBlank() ? null : SecretDigests.hmac(lookupSecret, source); }
+    private String hashSource(String source) { return source == null || source.isBlank() ? null : SecretDigests.hmac(lookupSecrets.getFirst(), source); }
 
     private ApiException rejected(AuthRepository.AttemptRow attempt) {
         int failures = attempt.failureCount() + 1;

@@ -34,7 +34,8 @@ import tools.jackson.databind.ObjectMapper;
 
 @SpringBootTest(properties={
         "resumint.sms.provider=fake", "resumint.sms.cooldown=60s", "resumint.sms.phone-hour-limit=5",
-        "resumint.auth.session-ttl=12h", "resumint.export.worker-enabled=false"
+        "resumint.auth.session-ttl=12h", "resumint.export.worker-enabled=false",
+        "resumint.auth.phone-lookup-secrets=new-phone-lookup-secret-for-test-32-characters,old-phone-lookup-secret-for-test-32-characters"
 })
 @AutoConfigureMockMvc
 @EnabledIfSystemProperty(named="resumint.mysql.it",matches="true")
@@ -218,6 +219,22 @@ class AccountIntegrationTest {
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM sms_verification_attempts", Integer.class)).isZero();
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM security_audit_events WHERE action='ACCOUNT_DELETED'", Integer.class)).isOne();
         mvc.perform(get("/api/me").cookie(session)).andExpect(status().isUnauthorized());
+    }
+
+    @Test void passwordLoginMigratesAnOldPhoneLookupKeyWithoutChangingIdentity() throws Exception {
+        MvcResult registration=register("15000150000");
+        Cookie session=cookie(registration,AuthSessionFilter.SESSION_COOKIE);Cookie csrf=cookie(registration,AuthSessionFilter.CSRF_COOKIE);
+        mvc.perform(put("/api/me/password").cookie(session,csrf).header("X-XSRF-TOKEN",csrf.getValue())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"newPassword\":\"rotate123\"}"))
+                .andExpect(status().isOk());
+        UUID userId=jdbc.queryForObject("SELECT id FROM users WHERE phone_e164='+8615000150000'",(rs,row)->UUID.fromString(rs.getString(1)));
+        String oldHash=SecretDigests.hmac("old-phone-lookup-secret-for-test-32-characters",PhoneNumbers.normalize("15000150000"));
+        jdbc.update("UPDATE users SET phone_lookup_hash=? WHERE id=?",oldHash,userId.toString());
+        mvc.perform(post("/api/auth/password-login").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"phone\":\"15000150000\",\"password\":\"rotate123\"}"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.userId").value(userId.toString()));
+        String activeHash=SecretDigests.hmac("new-phone-lookup-secret-for-test-32-characters",PhoneNumbers.normalize("15000150000"));
+        assertThat(jdbc.queryForObject("SELECT phone_lookup_hash FROM users WHERE id=?",String.class,userId.toString())).isEqualTo(activeHash);
     }
 
     private org.springframework.test.web.servlet.ResultActions sendCode(String phone, String purpose) throws Exception {
