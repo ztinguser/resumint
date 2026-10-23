@@ -43,7 +43,7 @@ class AdminTemplateIntegrationTest {
         jdbc.update("DELETE FROM template_versions WHERE template_id NOT IN ('benchmark-template','general-verdant','business-ledger','minimal-bareline')");
         jdbc.update("DELETE FROM templates WHERE id NOT IN ('benchmark-template','general-verdant','business-ledger','minimal-bareline')");
         jdbc.update("DELETE FROM trusted_devices");jdbc.update("DELETE FROM auth_sessions");jdbc.update("DELETE FROM sms_verification_attempts");jdbc.update("DELETE FROM users");
-        jdbc.update("UPDATE templates SET listed=TRUE,current_version=1,display_name='排版基准模板' WHERE id='benchmark-template'");
+        jdbc.update("UPDATE templates SET listed=FALSE,current_version=1,display_name='排版基准模板' WHERE id='benchmark-template'");
     }
 
     @Test void adminOnlyWorkflowKeepsPublishedVersionsStableAndOldVersionReadableAfterUnlisting() throws Exception {

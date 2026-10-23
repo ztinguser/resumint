@@ -2,6 +2,7 @@ package com.resumint.auth;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -51,6 +52,7 @@ class AccountIntegrationTest {
     @BeforeEach void clean() {
         jdbc.update("DELETE FROM template_favorites"); jdbc.update("DELETE FROM resumes"); jdbc.update("DELETE FROM trusted_devices");
         jdbc.update("DELETE FROM auth_sessions"); jdbc.update("DELETE FROM sms_verification_attempts"); jdbc.update("DELETE FROM users");
+        jdbc.update("DELETE FROM security_audit_events");
     }
 
     @Test void smsRegistrationIsOneTimeRateLimitedAndNeverStoresCode() throws Exception {
@@ -195,6 +197,27 @@ class AccountIntegrationTest {
         mvc.perform(post("/api/auth/password-login").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"phone\":\"13300133000\",\"password\":\"original123\"}"))
                 .andExpect(status().isOk());
+    }
+
+    @Test void accountDeletionRequiresExplicitConfirmationAndRemovesAllAccountData() throws Exception {
+        MvcResult registration = register("13200132000");
+        Cookie session = cookie(registration, AuthSessionFilter.SESSION_COOKIE);
+        Cookie csrf = cookie(registration, AuthSessionFilter.CSRF_COOKIE);
+        mvc.perform(put("/api/me/password").cookie(session, csrf).header("X-XSRF-TOKEN", csrf.getValue())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"newPassword\":\"delete123\"}"))
+                .andExpect(status().isOk());
+        mvc.perform(delete("/api/me").cookie(session, csrf).header("X-XSRF-TOKEN", csrf.getValue())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"currentPassword\":\"delete123\",\"confirmation\":\"NO\"}"))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("ACCOUNT_DELETE_CONFIRMATION_REQUIRED"));
+        mvc.perform(delete("/api/me").cookie(session, csrf).header("X-XSRF-TOKEN", csrf.getValue())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"currentPassword\":\"delete123\",\"confirmation\":\"DELETE\"}"))
+                .andExpect(status().isNoContent());
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM users", Integer.class)).isZero();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM auth_sessions", Integer.class)).isZero();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM trusted_devices", Integer.class)).isZero();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM sms_verification_attempts", Integer.class)).isZero();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM security_audit_events WHERE action='ACCOUNT_DELETED'", Integer.class)).isOne();
+        mvc.perform(get("/api/me").cookie(session)).andExpect(status().isUnauthorized());
     }
 
     private org.springframework.test.web.servlet.ResultActions sendCode(String phone, String purpose) throws Exception {

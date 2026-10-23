@@ -17,6 +17,7 @@ public class AuthService {
     private final AuthRepository repository;
     private final SmsVerificationService sms;
     private final PasswordEncoder passwordEncoder;
+    private final SecurityAuditRepository audit;
     private final Clock clock;
     private final Duration sessionTtl;
     private final Duration trustedDeviceTtl;
@@ -24,13 +25,13 @@ public class AuthService {
     private final int passwordMinLength;
     private final int passwordMaxLength;
 
-    AuthService(AuthRepository repository, SmsVerificationService sms, PasswordEncoder passwordEncoder, Clock clock,
+    AuthService(AuthRepository repository, SmsVerificationService sms, PasswordEncoder passwordEncoder, SecurityAuditRepository audit, Clock clock,
             @Value("${resumint.auth.session-ttl}") Duration sessionTtl,
             @Value("${resumint.auth.trusted-device-ttl}") Duration trustedDeviceTtl,
             @Value("${resumint.auth.inactivity-risk-age}") Duration inactivityRiskAge,
             @Value("${resumint.auth.password-min-length}") int passwordMinLength,
             @Value("${resumint.auth.password-max-length}") int passwordMaxLength) {
-        this.repository=repository; this.sms=sms; this.passwordEncoder=passwordEncoder; this.clock=clock;
+        this.repository=repository; this.sms=sms; this.passwordEncoder=passwordEncoder; this.audit=audit; this.clock=clock;
         this.sessionTtl=sessionTtl; this.trustedDeviceTtl=trustedDeviceTtl; this.inactivityRiskAge=inactivityRiskAge;
         this.passwordMinLength=passwordMinLength; this.passwordMaxLength=passwordMaxLength;
     }
@@ -97,6 +98,21 @@ public class AuthService {
         if (!java.util.Set.of("DEFAULT", "MALE", "FEMALE").contains(value))
             throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_AVATAR", "头像选项无效");
         repository.updateAvatar(userId, value, clock.instant());
+    }
+
+    @Transactional
+    void deleteAccount(UUID userId, String currentPassword, String confirmation) {
+        if (!"DELETE".equals(confirmation)) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "ACCOUNT_DELETE_CONFIRMATION_REQUIRED", "请输入 DELETE 确认永久删除账号");
+        }
+        AuthRepository.UserRow user = requireUser(userId);
+        if (user.passwordHash() != null
+                && !passwordEncoder.matches(currentPassword == null ? "" : currentPassword, user.passwordHash())) {
+            throw invalidCredentials();
+        }
+        Instant now = clock.instant();
+        audit.record("USER", userId, "ACCOUNT_DELETED", userId, "{}", now);
+        repository.deleteAccount(userId, sms.phoneHash(user.phone()));
     }
 
     @Transactional(noRollbackFor=ApiException.class)

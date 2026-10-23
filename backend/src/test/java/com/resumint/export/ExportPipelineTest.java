@@ -7,6 +7,7 @@ import com.resumint.web.ApiException;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.attribute.FileTime;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -56,9 +57,20 @@ class ExportPipelineTest {
     }
 
     @Test void rejectsInvalidSchemaOversizedSnapshotsAndFullQueue(@TempDir java.nio.file.Path directory) throws Exception {
-        var repository=new InMemoryExportJobRepository();var storage=new ExportStorage(directory,objectMapper);var tiny=new ExportLimits(URI.create("http://127.0.0.1:3100"),1,1,8,Duration.ofSeconds(45),Duration.ofSeconds(60),Duration.ofMinutes(15),Duration.ofMinutes(20));var coordinator=coordinator(repository,storage,tiny);
+        var repository=new InMemoryExportJobRepository();var storage=new ExportStorage(directory,objectMapper);var tiny=new ExportLimits(URI.create("http://127.0.0.1:3100"),1,1,8,Duration.ofSeconds(45),Duration.ofSeconds(60),Duration.ofMinutes(15),Duration.ofMinutes(20),Duration.ofMinutes(30));var coordinator=coordinator(repository,storage,tiny);
         assertThatThrownBy(()->coordinator.submit("stable-key-04",new ExportSnapshot(objectMapper.readTree("{}")))).isInstanceOf(ApiException.class).hasMessageContaining("missing");
         assertThatThrownBy(()->coordinator.submit("stable-key-05",new ExportSnapshot(validDocument()))).isInstanceOf(ApiException.class).hasMessageContaining("限制");
+    }
+
+    @Test void compensationCleanupRemovesOnlyOldUnreferencedFiles(@TempDir java.nio.file.Path directory) throws Exception {
+        var repository=new InMemoryExportJobRepository();var storage=new ExportStorage(directory,objectMapper);
+        var coordinator=coordinator(repository,storage,limits());var submitted=coordinator.submit("stable-key-08",new ExportSnapshot(validDocument()));
+        var orphan=directory.resolve("results/orphan.pdf");Files.createDirectories(orphan.getParent());Files.writeString(orphan,"orphan");
+        Files.setLastModifiedTime(orphan,FileTime.from(NOW.minus(Duration.ofHours(1))));
+        var recent=directory.resolve("results/recent.pdf");Files.writeString(recent,"recent");
+        Files.setLastModifiedTime(recent,FileTime.from(NOW.minus(Duration.ofMinutes(5))));
+        new ExportWorker(repository,(snapshot,output)->{},limits(),fixedClock(),storage).cleanupExpired();
+        assertThat(orphan).doesNotExist();assertThat(recent).exists();assertThat(storage.exists(submitted.job().snapshotRef())).isTrue();
     }
 
     private ExportCoordinator coordinator(ExportJobRepository repository,ExportStorage storage,ExportLimits limits){return new ExportCoordinator(repository,new ResumeDocumentSchema(objectMapper),limits,objectMapper,fixedClock(),storage,new ExportCredentialService(SECRET));}

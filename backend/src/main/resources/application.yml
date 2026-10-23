@@ -22,6 +22,8 @@ server:
 resumint:
   admin:
     phone: ${RESUMINT_ADMIN_PHONE:}
+    mode: ${RESUMINT_ADMIN_MODE:none}
+    confirmation: ${RESUMINT_ADMIN_CONFIRMATION:}
   auth:
     session-ttl: ${AUTH_SESSION_TTL:12h}
     trusted-device-ttl: ${AUTH_TRUSTED_DEVICE_TTL:180d}
@@ -49,6 +51,9 @@ resumint:
     session-hour-limit: ${SMS_SESSION_HOUR_LIMIT:10}
     global-minute-limit: ${SMS_GLOBAL_MINUTE_LIMIT:200}
     verify-failure-limit: ${SMS_VERIFY_FAILURE_LIMIT:5}
+    daily-cost-warning-count: ${SMS_DAILY_COST_WARNING_COUNT:500}
+  ops:
+    token: ${RESUMINT_OPS_TOKEN:dev-only-ops-token-change-me}
   export:
     print-base-url: ${PRINT_BASE_URL:http://127.0.0.1:3100}
     worker-enabled: ${EXPORT_WORKER_ENABLED:false}
@@ -59,6 +64,7 @@ resumint:
     lease-duration: ${EXPORT_LEASE_DURATION:60s}
     result-retention: ${EXPORT_RESULT_RETENTION:15m}
     credential-ttl: ${EXPORT_CREDENTIAL_TTL:20m}
+    orphan-grace: ${EXPORT_ORPHAN_GRACE:30m}
     credential-secret: ${EXPORT_CREDENTIAL_SECRET:dev-only-export-credential-secret-change-me}
     repository: mysql
     storage-root: ${EXPORT_STORAGE_ROOT:${java.io.tmpdir}/resumint-export}

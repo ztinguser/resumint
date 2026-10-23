@@ -21,10 +21,11 @@ public class ExportConfiguration {
             @Value("${resumint.export.render-timeout}") Duration renderTimeout,
             @Value("${resumint.export.lease-duration}") Duration leaseDuration,
             @Value("${resumint.export.result-retention}") Duration resultRetention,
-            @Value("${resumint.export.credential-ttl}") Duration credentialTtl) {
+            @Value("${resumint.export.credential-ttl}") Duration credentialTtl,
+            @Value("${resumint.export.orphan-grace}") Duration orphanGrace) {
         if (workerConcurrency != 1) throw new IllegalArgumentException("initial worker concurrency must remain 1");
         return new ExportLimits(printBaseUrl, workerConcurrency, queueCapacity, maxSnapshotBytes,
-                renderTimeout, leaseDuration, resultRetention, credentialTtl);
+                renderTimeout, leaseDuration, resultRetention, credentialTtl, orphanGrace);
     }
 
     @Bean Clock exportClock() { return Clock.systemUTC(); }

@@ -38,7 +38,7 @@ class SecurityConfiguration {
                         .requestMatchers("/api/templates/favorites", "/api/templates/*/favorite").authenticated()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.GET,"/api/templates/**").permitAll()
-                        .requestMatchers("/api/exports/**", "/api/health", "/api/openapi.json", "/error").permitAll()
+                        .requestMatchers("/api/exports/**", "/api/health", "/api/ops/status", "/api/openapi.json", "/error").permitAll()
                         .anyRequest().authenticated())
                 .addFilterBefore(sessionFilter, AnonymousAuthenticationFilter.class)
                 .addFilterAfter(csrfFilter, AuthSessionFilter.class)

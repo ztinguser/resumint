@@ -10,9 +10,14 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import java.time.ZoneOffset;
+import java.time.temporal.ChronoUnit;
 
 @Service
 public class SmsVerificationService {
+    private static final Logger log = LoggerFactory.getLogger(SmsVerificationService.class);
     private final AuthRepository repository;
     private final SmsProvider provider;
     private final Clock clock;
@@ -26,6 +31,7 @@ public class SmsVerificationService {
     private final int sessionHourLimit;
     private final int globalMinuteLimit;
     private final int verifyFailureLimit;
+    private final int dailyCostWarningCount;
 
     SmsVerificationService(AuthRepository repository, SmsProvider provider, Clock clock,
             @Value("${resumint.auth.phone-lookup-secret}") String lookupSecret,
@@ -37,12 +43,14 @@ public class SmsVerificationService {
             @Value("${resumint.sms.device-hour-limit}") int deviceHourLimit,
             @Value("${resumint.sms.session-hour-limit}") int sessionHourLimit,
             @Value("${resumint.sms.global-minute-limit}") int globalMinuteLimit,
-            @Value("${resumint.sms.verify-failure-limit}") int verifyFailureLimit) {
+            @Value("${resumint.sms.verify-failure-limit}") int verifyFailureLimit,
+            @Value("${resumint.sms.daily-cost-warning-count}") int dailyCostWarningCount) {
         this.repository = repository; this.provider = provider; this.clock = clock; this.lookupSecret = lookupSecret;
         this.cooldown = cooldown; this.attemptTtl = attemptTtl; this.phoneHourLimit = phoneHourLimit;
         this.phoneDayLimit = phoneDayLimit; this.sourceHourLimit = sourceHourLimit;
         this.deviceHourLimit = deviceHourLimit; this.sessionHourLimit = sessionHourLimit;
         this.globalMinuteLimit = globalMinuteLimit; this.verifyFailureLimit = verifyFailureLimit;
+        this.dailyCostWarningCount = dailyCostWarningCount;
     }
 
     @Transactional(noRollbackFor=ApiException.class)
@@ -77,6 +85,7 @@ public class SmsVerificationService {
             try {
                 SmsProvider.SendResult sent = provider.send(PhoneNumbers.national(phone), outId, normalizedPurpose);
                 repository.sentAttempt(id, sent.providerRequestId());
+                warnOnDailyCost(now);
                 return new SendReceipt(id, attempt.maskedPhone(), cooldown.toSeconds(), attempt.expiresAt());
             } catch (RuntimeException exception) {
                 repository.failedSend(id, exception instanceof ApiException api ? api.code() : "SMS_SEND_FAILED");
@@ -106,6 +115,14 @@ public class SmsVerificationService {
     }
 
     String phoneHash(String phone) { return SecretDigests.hmac(lookupSecret, phone); }
+    private void warnOnDailyCost(Instant now) {
+        Instant dayStart = now.atZone(ZoneOffset.UTC).truncatedTo(ChronoUnit.DAYS).toInstant();
+        long sentToday = repository.sentSince(dayStart);
+        if (sentToday >= dailyCostWarningCount
+                && repository.createOperationalAlert("SMS_DAILY_COST", dayStart, sentToday, dailyCostWarningCount, now)) {
+            log.warn("SMS_DAILY_COST_ALERT sent={} threshold={} windowStart={}", sentToday, dailyCostWarningCount, dayStart);
+        }
+    }
     private String hashSource(String source) { return source == null || source.isBlank() ? null : SecretDigests.hmac(lookupSecret, source); }
 
     private ApiException rejected(AuthRepository.AttemptRow attempt) {

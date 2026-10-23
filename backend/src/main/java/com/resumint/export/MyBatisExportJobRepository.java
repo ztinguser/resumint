@@ -5,6 +5,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.Set;
 import org.springframework.transaction.annotation.Transactional;
 
 public class MyBatisExportJobRepository implements ExportJobRepository {
@@ -24,4 +25,5 @@ public class MyBatisExportJobRepository implements ExportJobRepository {
     @Override @Transactional public List<ExportJob> expireAndFindCleanupCandidates(Instant now) { mapper.expire(now); return mapper.cleanupCandidates(now); }
     @Override public void clearStorageReferences(UUID id,Instant now) { mapper.clearRefs(id,now); }
     @Override public long activeCount() { return mapper.activeCount(); }
+    @Override public Set<String> referencedStorageRefs() { return mapper.referencedStorageRefs(); }
 }

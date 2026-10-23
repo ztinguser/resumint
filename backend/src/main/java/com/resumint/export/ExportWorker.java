@@ -8,6 +8,7 @@ import java.time.Clock;
 import java.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import com.resumint.system.LogSanitizer;
 
 public final class ExportWorker {
     private static final Logger log = LoggerFactory.getLogger(ExportWorker.class);
@@ -22,7 +23,7 @@ public final class ExportWorker {
             repository.succeed(job.id(),workerId,resultRef,Instant.now(clock),Instant.now(clock).plus(limits.resultRetention()));
             ExportJob updated=repository.findById(job.id()).orElseThrow(); if(updated.status()==ExportStatus.CANCELLED) storage.deleteQuietly(resultRef);
         } catch(Exception exception) {
-            log.error("PDF export {} failed", job.id(), exception);
+            log.error("PDF export {} failed: {}", job.id(), LogSanitizer.sanitize(exception.getMessage()));
             if(temporary!=null) try { Files.deleteIfExists(temporary); } catch(Exception ignored) { }
             repository.fail(job.id(),workerId,"PDF_RENDER_FAILED",Instant.now(clock));
         }
@@ -31,6 +32,8 @@ public final class ExportWorker {
     public void cleanupExpired() {
         Instant now=Instant.now(clock);
         for(ExportJob job:repository.expireAndFindCleanupCandidates(now)) { storage.deleteQuietly(job.snapshotRef()); storage.deleteQuietly(job.resultRef()); repository.clearStorageReferences(job.id(),now); }
+        int orphaned=storage.cleanupOrphans(repository.referencedStorageRefs(),now.minus(limits.orphanGrace()));
+        if(orphaned>0)log.warn("Removed {} orphaned export files during compensation cleanup",orphaned);
     }
     private static void moveIntoPlace(Path source,Path target) throws Exception { try { Files.move(source,target,StandardCopyOption.ATOMIC_MOVE,StandardCopyOption.REPLACE_EXISTING); } catch(AtomicMoveNotSupportedException e) { Files.move(source,target,StandardCopyOption.REPLACE_EXISTING); } }
 }

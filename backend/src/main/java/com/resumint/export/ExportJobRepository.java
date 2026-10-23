@@ -5,6 +5,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.Set;
 
 public interface ExportJobRepository {
     ExportJob insert(ExportJob job);
@@ -17,4 +18,5 @@ public interface ExportJobRepository {
     List<ExportJob> expireAndFindCleanupCandidates(Instant now);
     void clearStorageReferences(UUID id, Instant now);
     long activeCount();
+    Set<String> referencedStorageRefs();
 }

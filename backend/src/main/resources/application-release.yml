@@ -1,0 +1,8 @@
+resumint:
+  auth:
+    cookie-secure: true
+  sms:
+    provider: alibaba
+  export:
+    worker-concurrency: 1
+

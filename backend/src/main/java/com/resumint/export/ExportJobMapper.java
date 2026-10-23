@@ -3,6 +3,7 @@ package com.resumint.export;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+import java.util.Set;
 import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
@@ -45,4 +46,5 @@ public interface ExportJobMapper {
     @Select("SELECT * FROM export_jobs WHERE result_expires_at <= #{now} AND (snapshot_ref IS NOT NULL OR result_ref IS NOT NULL)") List<ExportJob> cleanupCandidates(Instant now);
     @Update("UPDATE export_jobs SET snapshot_ref=NULL,result_ref=NULL,updated_at=#{now} WHERE id=#{id}") void clearRefs(@Param("id") UUID id,@Param("now") Instant now);
     @Select("SELECT COUNT(*) FROM export_jobs WHERE status IN ('QUEUED','RUNNING')") long activeCount();
+    @Select("SELECT snapshot_ref FROM export_jobs WHERE snapshot_ref IS NOT NULL UNION SELECT result_ref FROM export_jobs WHERE result_ref IS NOT NULL") Set<String> referencedStorageRefs();
 }

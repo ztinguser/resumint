@@ -92,6 +92,17 @@ public final class AuthController {
         return ResponseEntity.ok(Map.of("updated", true));
     }
 
+    @DeleteMapping("/me")
+    ResponseEntity<Void> deleteAccount(@AuthenticationPrincipal AuthPrincipal principal,
+            @Valid @RequestBody DeleteAccountRequest body) {
+        auth.deleteAccount(principal.userId(), body.currentPassword(), body.confirmation());
+        return ResponseEntity.noContent()
+                .header(HttpHeaders.SET_COOKIE, clear(AuthSessionFilter.SESSION_COOKIE).toString())
+                .header(HttpHeaders.SET_COOKIE, clear(AuthSessionFilter.CSRF_COOKIE).toString())
+                .header(HttpHeaders.SET_COOKIE, clear(AuthSessionFilter.DEVICE_COOKIE).toString())
+                .build();
+    }
+
     private ResponseEntity<LoginResponse> loginResponse(AuthService.LoginResult result) {
         LoginResponse body = new LoginResponse(result.userId(), result.maskedPhone(), result.avatar(), result.passwordSet(), result.registered());
         return ResponseEntity.ok()
@@ -123,6 +134,7 @@ public final class AuthController {
     public record AvatarRequest(@NotBlank String avatar) { }
     public record ChangePhoneRequest(@NotNull UUID oldAttemptId, @NotBlank String oldPhone, @NotBlank String oldCode,
             @NotNull UUID newAttemptId, @NotBlank String newPhone, @NotBlank String newCode, String currentPassword) { }
+    public record DeleteAccountRequest(String currentPassword, @NotBlank String confirmation) { }
     public record LoginResponse(UUID userId, String maskedPhone, String avatar, boolean passwordSet, boolean registered) { }
     public record MeResponse(UUID userId, String maskedPhone, String avatar, boolean passwordSet, String role) { }
 }

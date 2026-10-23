@@ -8,6 +8,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 public final class InMemoryExportJobRepository implements ExportJobRepository {
     private final Map<UUID, ExportJob> jobs = new LinkedHashMap<>();
@@ -66,6 +68,10 @@ public final class InMemoryExportJobRepository implements ExportJobRepository {
                 job.cancelRequested(), null, job.errorCode(), job.createdAt(), now, job.credentialExpiresAt(), job.resultExpiresAt()));
     }
     @Override public synchronized long activeCount() { return jobs.values().stream().filter(job -> job.status() == ExportStatus.QUEUED || job.status() == ExportStatus.RUNNING).count(); }
+    @Override public synchronized Set<String> referencedStorageRefs() {
+        return jobs.values().stream().flatMap(job -> java.util.stream.Stream.of(job.snapshotRef(), job.resultRef()))
+                .filter(java.util.Objects::nonNull).collect(Collectors.toUnmodifiableSet());
+    }
     private ExportJob requireLease(UUID id, String workerId) {
         ExportJob job = jobs.get(id);
         if (job == null || job.status() != ExportStatus.RUNNING || !workerId.equals(job.leaseOwner())) throw new IllegalStateException("Worker does not own the export lease");

@@ -65,10 +65,10 @@ class ResumeIntegrationTest {
                 .andExpect(status().isOk()).andExpect(jsonPath("$.title").value("重命名草稿"))
                 .andExpect(jsonPath("$.revision").value(3));
 
-        mvc.perform(put("/api/templates/benchmark-template/favorite").cookie(session,csrf).header("X-XSRF-TOKEN",csrf.getValue())).andExpect(status().isOk());
-        mvc.perform(put("/api/templates/benchmark-template/favorite").cookie(session,csrf).header("X-XSRF-TOKEN",csrf.getValue())).andExpect(status().isOk());
-        mvc.perform(get("/api/templates/favorites").cookie(session)).andExpect(status().isOk()).andExpect(jsonPath("$[0]").value("benchmark-template"));
-        mvc.perform(delete("/api/templates/benchmark-template/favorite").cookie(session,csrf).header("X-XSRF-TOKEN",csrf.getValue())).andExpect(status().isOk());
+        mvc.perform(put("/api/templates/general-verdant/favorite").cookie(session,csrf).header("X-XSRF-TOKEN",csrf.getValue())).andExpect(status().isOk());
+        mvc.perform(put("/api/templates/general-verdant/favorite").cookie(session,csrf).header("X-XSRF-TOKEN",csrf.getValue())).andExpect(status().isOk());
+        mvc.perform(get("/api/templates/favorites").cookie(session)).andExpect(status().isOk()).andExpect(jsonPath("$[0]").value("general-verdant"));
+        mvc.perform(delete("/api/templates/general-verdant/favorite").cookie(session,csrf).header("X-XSRF-TOKEN",csrf.getValue())).andExpect(status().isOk());
         mvc.perform(delete("/api/resumes/"+id+"?baseRevision=3").cookie(session,csrf).header("X-XSRF-TOKEN",csrf.getValue()))
                 .andExpect(status().isNoContent());
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM resumes",Integer.class)).isZero();

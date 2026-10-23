@@ -106,6 +106,14 @@ public class AuthRepository {
     long sentSince(Instant since) {
         return count("SELECT COUNT(*) FROM sms_verification_attempts WHERE created_at>=? AND status IN ('PENDING','SENT','VERIFIED','CONSUMED')", at(since));
     }
+    boolean createOperationalAlert(String type, Instant windowStart, long observed, long threshold, Instant now) {
+        try {
+            return jdbc.update("INSERT INTO operational_alerts(id,alert_type,window_start,observed_value,threshold_value,created_at) VALUES(?,?,?,?,?,?)",
+                    UUID.randomUUID().toString(), type, at(windowStart), observed, threshold, at(now)) == 1;
+        } catch (DuplicateKeyException duplicate) {
+            return false;
+        }
+    }
     Optional<Instant> lastSentAt(String phoneHash) {
         List<Timestamp> values = jdbc.query("SELECT MAX(created_at) FROM sms_verification_attempts WHERE phone_lookup_hash=? AND status IN ('PENDING','SENT','VERIFIED','CONSUMED')",
                 (rs, row) -> rs.getTimestamp(1), phoneHash);
@@ -130,6 +138,20 @@ public class AuthRepository {
 
     void revokeTrustedDevices(UUID userId, Instant now) {
         jdbc.update("UPDATE trusted_devices SET revoked_at=? WHERE user_id=? AND revoked_at IS NULL", at(now), userId.toString());
+    }
+
+    void deleteAccount(UUID userId, String phoneHash) {
+        jdbc.update("DELETE FROM sms_verification_attempts WHERE phone_lookup_hash=?", phoneHash);
+        jdbc.update("DELETE FROM users WHERE id=?", userId.toString());
+    }
+
+    long adminCount() {
+        Long result = jdbc.queryForObject("SELECT COUNT(*) FROM users WHERE role='ADMIN'", Long.class);
+        return result == null ? 0 : result;
+    }
+
+    int promoteAdmin(UUID userId, Instant now) {
+        return jdbc.update("UPDATE users SET role='ADMIN',updated_at=? WHERE id=? AND role<>'ADMIN'", at(now), userId.toString());
     }
 
     SessionTokens createSession(UUID userId, Instant now, Instant expiresAt) {
