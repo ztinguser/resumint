@@ -6,33 +6,25 @@ test("guest selects a template, edits a resume, and downloads a generated PDF",a
   await expect(page.getByRole("button",{name:"全部",exact:true})).toHaveCount(0);
   await expect(page.getByText("白昼来信",{exact:true})).toBeVisible();
   await expect(page.getByText("排版基准模板",{exact:true})).toHaveCount(0);
-  await page.goto("/editor?template=benchmark-template");
+  await page.goto("/editor?template=general-verdant");
   await expect(page.getByRole("button",{name:"导出 PDF"})).toBeEnabled();
 
-  const name=page.getByLabel("姓名");
+  const name=page.getByRole("textbox",{name:"姓名，双击编辑"});
+  await name.dblclick();
   await name.fill("端到端游客");
-  await expect(page.locator(".resume-page h1").first()).toHaveText("端到端游客");
-  await page.getByLabel("个人链接").fill("invalid-link");
-  await expect(page.getByText("链接需以 http:// 或 https:// 开头")).toBeVisible();
-  await page.getByLabel("个人链接").fill("https://example.com/e2e");
+  await name.press("Enter");
+  await expect(name).toHaveText("端到端游客");
 
-  await page.getByRole("button",{name:"＋ 模块"}).click();
-  await page.getByLabel("模块名称").fill("端到端模块");
-  await page.getByRole("button",{name:"＋ 添加条目"}).click();
-  await page.getByLabel("名称").last().fill("游客条目");
-  await page.getByRole("button",{name:"＋ 字段"}).click();
-  await page.getByLabel("字段值").last().fill("自定义值");
+  await page.getByRole("button",{name:"复制模块 工作经历"}).click();
+  await expect(page.locator(".general-section-title")).toHaveText(["教育经历","工作经历","工作经历","个人总结"]);
   await page.getByRole("button",{name:"撤销"}).click();
-  await expect(page.getByLabel("字段值").last()).toHaveValue("字段内容");
+  await expect(page.locator(".general-section-title")).toHaveText(["教育经历","工作经历","个人总结"]);
   await page.getByRole("button",{name:"重做"}).click();
-  await expect(page.getByLabel("字段值").last()).toHaveValue("自定义值");
+  await expect(page.locator(".general-section-title")).toHaveText(["教育经历","工作经历","工作经历","个人总结"]);
 
   const upload=page.locator('input[type="file"]');
   await upload.setInputFiles({name:"portrait.png",mimeType:"image/png",buffer:Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=","base64")});
-  await expect(page.locator(".portrait")).toBeVisible();
-  await page.getByRole("button",{name:"装饰",exact:true}).click();
-  await page.getByRole("button",{name:"＋ 添加",exact:true}).click();
-  await expect(page.locator(".decoration-list button")).toHaveCount(2);
+  await expect(page.locator(".general-avatar img")).toBeVisible();
 
   const downloadPromise=page.waitForEvent("download");
   await page.getByRole("button",{name:"导出 PDF"}).click();
@@ -45,5 +37,5 @@ test("guest selects a template, edits a resume, and downloads a generated PDF",a
   expect(bytes.byteLength).toBeGreaterThan(5_000);
 
   await page.reload();
-  await expect(page.getByLabel("姓名")).not.toHaveValue("端到端游客");
+  await expect(name).not.toHaveText("端到端游客");
 });

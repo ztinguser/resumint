@@ -3,7 +3,7 @@ import{expect,test}from"@playwright/test";
 test("password login and reset, draft rename, and two-phone change complete in the account space",async({page})=>{
   const oldPhone="13200132000";
   const newPhone="13100131000";
-  await page.goto("/editor?template=benchmark-template");
+  await page.goto("/editor?template=general-verdant");
   await expect(page.getByRole("button",{name:"导出 PDF"})).toBeEnabled();
   await page.getByRole("button",{name:"账号菜单"}).click();
   await page.getByLabel("登录手机号").fill(oldPhone);
@@ -58,4 +58,16 @@ test("password login and reset, draft rename, and two-phone change complete in t
   await page.getByLabel("登录密码").fill("changed456");
   await page.getByRole("button",{name:"密码登录",exact:true}).last().click();
   await expect(page.getByText("+86 131****1000",{exact:true}).first()).toBeVisible();
+
+  await page.getByRole("button",{name:"账号与安全"}).click();
+  await page.getByLabel("当前密码").fill("changed456");
+  await page.getByLabel("删除账号确认").fill("DELETE");
+  page.once("dialog",dialog=>dialog.accept());
+  await page.getByRole("button",{name:"永久删除账号"}).click();
+  await expect(page.getByText("账号及关联数据已删除",{exact:true})).toBeVisible();
+  await page.getByRole("button",{name:"密码登录"}).first().click();
+  await page.getByLabel("登录手机号").fill(newPhone);
+  await page.getByLabel("登录密码").fill("changed456");
+  await page.getByRole("button",{name:"密码登录",exact:true}).last().click();
+  await expect(page.getByText("手机号或密码错误",{exact:true})).toBeVisible();
 });
