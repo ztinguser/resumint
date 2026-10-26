@@ -1,3 +1,11 @@
+logging:
+  file:
+    name: ${APPLICATION_LOG_DIRECTORY}/resumint-${resumint.runtime-role}.log
+  logback:
+    rollingpolicy:
+      max-history: ${APPLICATION_LOG_RETENTION_DAYS}
+      clean-history-on-start: true
+
 resumint:
   auth:
     cookie-secure: true

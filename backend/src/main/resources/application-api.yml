@@ -1,3 +1,4 @@
 resumint:
+  runtime-role: api
   export:
     worker-enabled: false

@@ -1,4 +1,5 @@
 resumint:
+  runtime-role: worker
   export:
     worker-enabled: true
     worker-concurrency: 1

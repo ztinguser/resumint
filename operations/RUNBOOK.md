@@ -27,6 +27,10 @@
 
 网易邮箱必须开启 SMTP，并使用客户端授权码配置 `ALERT_EMAIL_AUTHORIZATION_CODE`，不能使用邮箱登录密码。发件地址通常应与 `ALERT_EMAIL_USERNAME` 相同；收件地址由 `ALERT_EMAIL_TO` 配置，多个地址以逗号分隔。凭据只通过本机或部署密钥管理注入。
 
+## 应用日志
+
+API 与 Worker 使用独立日志文件，发布保留期固定为 `APPLICATION_LOG_RETENTION_DAYS=30`。启动和滚动时由 Logback 删除超过 30 天的归档，不手工删除当前日志。排障导出日志前再次检查其中不含手机号、验证码、Cookie、授权码、AccessKey 或简历正文。
+
 首次配置优先运行 `scripts/setup-m6-email-alert.sh` 交互向导。Windows 环境可在 WSL 中进入仓库后执行 `bash scripts/setup-m6-email-alert.sh`；向导会调用 `scripts/configure-m6-email-alert.ps1`，将授权码用当前 Windows 用户的 DPAPI 保存到 `%LOCALAPPDATA%\Resumint`，公共邮箱设置保存在同一仓库外目录。需要更换邮箱或授权码时运行 PowerShell 辅助脚本的 `-RefreshCredentials` 参数，再重新运行向导。
 
 持久告警先进入 `PENDING`，发送时进入 `SENDING`，失败后按 `ALERT_EMAIL_RETRY_DELAY` 进入 `RETRY`，达到 `ALERT_EMAIL_MAX_ATTEMPTS` 后进入 `FAILED`。`GET /api/ops/status` 的 `alertEmailsPending` 和 `alertEmailsFailed` 用于发现积压；重新发送失败记录前先查明 SMTP、授权码、网络或收件规则问题，不要直接修改或删除告警行。真实送达探针使用 `LiveEmailOperationalAlertIntegrationTest`，只在显式设置 `-Dresumint.live.email.it=true` 时运行。
