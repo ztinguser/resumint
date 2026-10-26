@@ -17,6 +17,8 @@ resumint:
     global-minute-limit: ${SMS_GLOBAL_MINUTE_LIMIT}
     verify-failure-limit: ${SMS_VERIFY_FAILURE_LIMIT}
     daily-cost-warning-count: ${SMS_DAILY_COST_WARNING_COUNT}
+  security:
+    audit-retention-days: ${SECURITY_AUDIT_RETENTION_DAYS}
   alert:
     email:
       enabled: true

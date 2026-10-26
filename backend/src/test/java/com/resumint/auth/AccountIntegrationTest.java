@@ -49,6 +49,7 @@ class AccountIntegrationTest {
     @Autowired JdbcTemplate jdbc;
     @Autowired ObjectMapper json;
     @Autowired AuthRepository repository;
+    @Autowired SecurityAuditRepository audit;
     @Autowired SmsVerificationService sms;
 
     @BeforeEach void clean() {
@@ -72,6 +73,18 @@ class AccountIntegrationTest {
                 .andExpect(jsonPath("$.alertEmailsPending").value(1))
                 .andExpect(jsonPath("$.alertEmailsFailed").value(0)).andReturn().getResponse().getContentAsString();
         assertThat(statusBody).doesNotContain("18800188000","18700187000","phone","resume");
+    }
+
+    @Test void securityAuditRetentionKeepsBoundaryAndNewerEvents() {
+        Instant cutoff = Instant.parse("2026-04-29T12:00:00Z");
+        audit.record("SYSTEM", null, "OLDER_THAN_RETENTION", null, "{}", cutoff.minusSeconds(1));
+        audit.record("SYSTEM", null, "AT_RETENTION_BOUNDARY", null, "{}", cutoff);
+        audit.record("SYSTEM", null, "NEWER_THAN_RETENTION", null, "{}", cutoff.plusSeconds(1));
+
+        assertThat(audit.deleteCreatedBefore(cutoff)).isOne();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM security_audit_events", Integer.class)).isEqualTo(2);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM security_audit_events WHERE action='AT_RETENTION_BOUNDARY'", Integer.class)).isOne();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM security_audit_events WHERE action='NEWER_THAN_RETENTION'", Integer.class)).isOne();
     }
 
     @Test void smsRegistrationIsOneTimeRateLimitedAndNeverStoresCode() throws Exception {

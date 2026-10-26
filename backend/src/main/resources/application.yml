@@ -66,6 +66,8 @@ resumint:
     daily-cost-warning-count: ${SMS_DAILY_COST_WARNING_COUNT:100}
   ops:
     token: ${RESUMINT_OPS_TOKEN:dev-only-ops-token-change-me}
+  security:
+    audit-retention-days: ${SECURITY_AUDIT_RETENTION_DAYS:180}
   alert:
     email:
       enabled: ${ALERT_EMAIL_ENABLED:false}

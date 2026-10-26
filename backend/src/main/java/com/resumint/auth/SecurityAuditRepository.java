@@ -17,6 +17,10 @@ class SecurityAuditRepository {
                 UUID.randomUUID().toString(), actorType, id(actorUserId), action, id(targetUserId), detailsJson, Timestamp.from(now));
     }
 
+    int deleteCreatedBefore(Instant cutoff) {
+        return jdbc.update("DELETE FROM security_audit_events WHERE created_at < ?", Timestamp.from(cutoff));
+    }
+
     private static String id(UUID value) { return value == null ? null : value.toString(); }
 }
 

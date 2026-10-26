@@ -66,5 +66,5 @@ AUTH_INACTIVITY_RISK_AGE=180d
 
 # Operational retention applied by scheduled jobs/runbook
 BACKUP_RETENTION_DAYS=30
-SECURITY_AUDIT_RETENTION_DAYS=<release-owner-decision-required>
+SECURITY_AUDIT_RETENTION_DAYS=180
 APPLICATION_LOG_RETENTION_DAYS=<release-owner-decision-required>
