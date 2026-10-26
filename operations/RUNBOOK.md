@@ -4,7 +4,7 @@
 
 1. 停止 API 与 Worker，并确认没有正在写入的导出任务。
 2. 执行 `ops/backup.ps1`，显式传入 `-ApplicationStopped`。脚本用单事务导出 MySQL，同时复制私有文件目录，生成包含数据库和每个文件 SHA-256 的 ZIP 及归档校验 sidecar。
-3. 将 ZIP 与 `.sha256` 一同复制到独立备份介质。按 `BACKUP_RETENTION_DAYS` 删除过期备份，删除前至少保留一个已完成恢复演练的备份。
+3. 将 ZIP 与 `.sha256` 一同复制到独立备份介质。发布配置固定 `BACKUP_RETENTION_DAYS=30`；删除超过 30 天的备份前，必须至少保留一个已完成恢复演练的备份。
 4. 重新启动 API，再启动 Worker，检查健康和运维状态。
 
 ## 恢复
