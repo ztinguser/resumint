@@ -6,3 +6,4 @@ export function saveStarted(state:SaveState):SaveState{return{...state,status:"s
 export function saveSucceeded(state:SaveState):SaveState{const submitted=state.savingRevision??state.localRevision;return{...state,savingRevision:null,savedRevision:submitted,status:state.localRevision===submitted?"saved":"dirty"};}
 export function saveFailed(state:SaveState):SaveState{return{...state,savingRevision:null,status:"failed"};}
 export function loadedSaved(localRevision=0):SaveState{return{status:"saved",localRevision,savingRevision:null,savedRevision:localRevision};}
+export function isSaveInFlight(state:SaveState):boolean{return state.savingRevision!==null;}
