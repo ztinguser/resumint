@@ -6,6 +6,8 @@ V1 使用同机部署的 Next.js、Spring Boot API、独立 Spring Boot Worker�
 
 发布配置以 `deploy/release-config.example` 为清单。`release` profile 会拒绝开发默认密钥、不安全 Cookie、非阿里云短信 provider 和相对导出目录。真实密码、RAM AccessKey、短信模板、运维令牌和应用密钥只能通过部署密钥管理注入。
 
+登录会话的发布基线为 `AUTH_SESSION_TTL=30d`。会话令牌只保存在 HttpOnly、Secure、SameSite=Lax Cookie 中，服务端仅保存摘要并支持退出登录、密码重置、换号和账号删除时撤销；延长会话用于减少重复短信登录，不改变验证码限流规则。
+
 API 健康检查为 `GET /api/health`。运维状态为 `GET /api/ops/status`，必须携带 `X-Ops-Token`；响应只有计数、阈值和磁盘余量，不包含手机号、简历正文、图片或请求体。短信日发送量首次达到 `SMS_DAILY_COST_WARNING_COUNT` 时写入持久告警并输出 `SMS_DAILY_COST_ALERT` 日志，日志平台据此触发通知。
 
 发布前分别构建 `frontend` 的生产包与 `backend` 的可执行 JAR；启动顺序为 MySQL、前端打印服务、API、Worker。不得将 Worker 暴露为 HTTP 服务。域名、服务器规格、上线地区与预算不在 V1 代码交付内。

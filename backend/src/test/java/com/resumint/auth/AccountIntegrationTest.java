@@ -35,7 +35,7 @@ import tools.jackson.databind.ObjectMapper;
 @SpringBootTest(properties={
         "resumint.sms.provider=fake", "resumint.sms.cooldown=60s", "resumint.sms.phone-hour-limit=5",
         "resumint.sms.daily-cost-warning-count=1",
-        "resumint.auth.session-ttl=12h", "resumint.export.worker-enabled=false",
+        "resumint.auth.session-ttl=30d", "resumint.export.worker-enabled=false",
         "resumint.auth.phone-lookup-secrets=new-phone-lookup-secret-for-test-32-characters,old-phone-lookup-secret-for-test-32-characters"
 })
 @AutoConfigureMockMvc
@@ -91,6 +91,9 @@ class AccountIntegrationTest {
 
         Cookie session = cookie(login, AuthSessionFilter.SESSION_COOKIE);
         Cookie csrf = cookie(login, AuthSessionFilter.CSRF_COOKIE);
+        assertThat(session.getMaxAge()).isBetween((int) java.time.Duration.ofDays(29).toSeconds(),
+                (int) java.time.Duration.ofDays(30).toSeconds());
+        assertThat(csrf.getMaxAge()).isEqualTo(session.getMaxAge());
         mvc.perform(get("/api/me").cookie(session)).andExpect(status().isOk()).andExpect(jsonPath("$.maskedPhone").value("+86 138****8000"));
         mvc.perform(put("/api/me/password").cookie(session, csrf).header("X-XSRF-TOKEN", csrf.getValue())
                         .contentType(MediaType.APPLICATION_JSON).content("{\"newPassword\":\"abc123\"}"))

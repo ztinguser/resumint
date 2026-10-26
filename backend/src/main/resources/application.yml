@@ -25,7 +25,7 @@ resumint:
     mode: ${RESUMINT_ADMIN_MODE:none}
     confirmation: ${RESUMINT_ADMIN_CONFIRMATION:}
   auth:
-    session-ttl: ${AUTH_SESSION_TTL:12h}
+    session-ttl: ${AUTH_SESSION_TTL:30d}
     trusted-device-ttl: ${AUTH_TRUSTED_DEVICE_TTL:180d}
     inactivity-risk-age: ${AUTH_INACTIVITY_RISK_AGE:180d}
     password-min-length: ${AUTH_PASSWORD_MIN_LENGTH:6}
