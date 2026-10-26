@@ -27,7 +27,7 @@ SMS_DEVICE_HOUR_LIMIT=10
 SMS_SESSION_HOUR_LIMIT=10
 SMS_GLOBAL_MINUTE_LIMIT=200
 SMS_VERIFY_FAILURE_LIMIT=5
-SMS_DAILY_COST_WARNING_COUNT=<release-owner-decision-required>
+SMS_DAILY_COST_WARNING_COUNT=100
 
 # Operational alert email (NetEase SMTP; password is the client authorization code, not the mailbox password)
 ALERT_EMAIL_ENABLED=true
