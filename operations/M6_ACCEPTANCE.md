@@ -48,4 +48,4 @@
 
 - 使用仓库外 Windows DPAPI 凭据、一次性 MySQL 8.4 和显式人工输入完成一条真实阿里云验证码短信发送。故意输入的错误验证码被拒绝，短信收到的真实验证码成功完成注册登录，随后带登录态读取 `/api/me` 成功；日志未记录手机号、验证码或 AccessKey。
 - 初版联调脚本在登录后复用同一个 Cookie 客户端检查重复消费，因缺少 CSRF 请求头被安全过滤器提前以 403 拒绝，未进入验证码状态检查。脚本已改为使用无 Cookie 的独立重放客户端，并在错误中只输出 HTTP 状态与脱敏业务码。
-- 修复后 Windows PowerShell 5.1 `-PreflightOnly` 通过；真实 MySQL 8.4 上 `AccountIntegrationTest` 10/10 通过且 0 跳过，覆盖未登录重放返回 `409/SMS_ATTEMPT_USED`、已登录但缺少 CSRF 返回 `403/CSRF_REJECTED`、携带合法 CSRF 后仍返回 `409/SMS_ATTEMPT_USED`。为避免产生第二条短信费用，本次未再次执行真实发送；费用告警事件已在后端日志中生成，对应告警邮件是否实际送达仍待人工确认。
+- 修复后 Windows PowerShell 5.1 `-PreflightOnly` 通过；真实 MySQL 8.4 上 `AccountIntegrationTest` 10/10 通过且 0 跳过，覆盖未登录重放返回 `409/SMS_ATTEMPT_USED`、已登录但缺少 CSRF 返回 `403/CSRF_REJECTED`、携带合法 CSRF 后仍返回 `409/SMS_ATTEMPT_USED`。为避免产生第二条短信费用，本次未再次执行真实发送；后端日志已记录费用告警事件，发布负责人随后确认对应网易告警邮件实际到达收件箱。
