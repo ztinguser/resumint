@@ -2,6 +2,7 @@
 param([switch]$PreflightOnly)
 
 $ErrorActionPreference = "Stop"
+Add-Type -AssemblyName System.Net.Http
 $repositoryRoot = Split-Path -Parent $PSScriptRoot
 $backendDirectory = Join-Path $repositoryRoot "backend"
 $stateDirectory = Join-Path $env:LOCALAPPDATA "Resumint"
@@ -67,6 +68,9 @@ if ([string]::IsNullOrWhiteSpace([string]$alibabaCredential.UserName) -or
     throw "One or more DPAPI-protected live test settings are empty."
 }
 if ($PreflightOnly) {
+    $compatibilityHandler = [System.Net.Http.HttpClientHandler]::new()
+    $compatibilityClient = [System.Net.Http.HttpClient]::new($compatibilityHandler)
+    $compatibilityClient.Dispose(); $compatibilityHandler.Dispose()
     $accessKeySecret = $null; $lookupSecret = $null; $emailAuthorizationCode = $null
     Write-Host "LIVE_SMS_PREFLIGHT=true" -ForegroundColor Green
     exit 0
