@@ -96,7 +96,7 @@ try {
 
     $ready = $false
     for ($attempt = 0; $attempt -lt 20; $attempt++) {
-        & docker exec $containerName mysqladmin ping -h 127.0.0.1 -uresumint -presumint --silent 2>$null | Out-Null
+        & docker exec -e MYSQL_PWD=resumint $containerName mysqladmin ping -h 127.0.0.1 -uresumint --silent 2>$null | Out-Null
         if ($LASTEXITCODE -eq 0) { $ready = $true; break }
         Start-Sleep -Seconds 2
     }
