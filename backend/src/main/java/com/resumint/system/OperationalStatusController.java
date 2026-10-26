@@ -38,6 +38,8 @@ final class OperationalStatusController {
         result.put("smsFailedToday",count("SELECT COUNT(*) FROM sms_verification_attempts WHERE created_at>=? AND status='SEND_FAILED'",dayStart));
         result.put("smsDailyCostWarningCount",smsWarning);
         result.put("smsCostAlertedToday",count("SELECT COUNT(*) FROM operational_alerts WHERE alert_type='SMS_DAILY_COST' AND window_start=?",dayStart)>0);
+        result.put("alertEmailsPending",count("SELECT COUNT(*) FROM operational_alerts WHERE notification_status IN ('PENDING','RETRY','SENDING')"));
+        result.put("alertEmailsFailed",count("SELECT COUNT(*) FROM operational_alerts WHERE notification_status='FAILED'"));
         result.put("exportsQueued",count("SELECT COUNT(*) FROM export_jobs WHERE status='QUEUED'"));
         result.put("exportsRunning",count("SELECT COUNT(*) FROM export_jobs WHERE status='RUNNING'"));
         result.put("exportsFailedToday",count("SELECT COUNT(*) FROM export_jobs WHERE status='FAILED' AND updated_at>=?",dayStart));

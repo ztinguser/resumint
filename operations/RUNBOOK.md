@@ -22,3 +22,9 @@
 ## 数据删除与清理
 
 用户在“账号与安全”输入 `DELETE` 并在已设密码时提供当前密码，服务端事务删除账号、草稿、收藏、会话、可信设备和短信验证元数据；安全审计仅保留匿名事件。Worker 每轮处理过期任务，并扫描超过 `EXPORT_ORPHAN_GRACE` 且不被数据库引用的快照、结果与临时文件作为补偿清理。
+
+## 告警邮件
+
+网易邮箱必须开启 SMTP，并使用客户端授权码配置 `ALERT_EMAIL_AUTHORIZATION_CODE`，不能使用邮箱登录密码。发件地址通常应与 `ALERT_EMAIL_USERNAME` 相同；收件地址由 `ALERT_EMAIL_TO` 配置，多个地址以逗号分隔。凭据只通过本机或部署密钥管理注入。
+
+持久告警先进入 `PENDING`，发送时进入 `SENDING`，失败后按 `ALERT_EMAIL_RETRY_DELAY` 进入 `RETRY`，达到 `ALERT_EMAIL_MAX_ATTEMPTS` 后进入 `FAILED`。`GET /api/ops/status` 的 `alertEmailsPending` 和 `alertEmailsFailed` 用于发现积压；重新发送失败记录前先查明 SMTP、授权码、网络或收件规则问题，不要直接修改或删除告警行。真实送达探针使用 `LiveEmailOperationalAlertIntegrationTest`，只在显式设置 `-Dresumint.live.email.it=true` 时运行。

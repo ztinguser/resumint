@@ -107,14 +107,6 @@ public class AuthRepository {
     long sentSince(Instant since) {
         return count("SELECT COUNT(*) FROM sms_verification_attempts WHERE created_at>=? AND status IN ('PENDING','SENT','VERIFIED','CONSUMED')", at(since));
     }
-    boolean createOperationalAlert(String type, Instant windowStart, long observed, long threshold, Instant now) {
-        try {
-            return jdbc.update("INSERT INTO operational_alerts(id,alert_type,window_start,observed_value,threshold_value,created_at) VALUES(?,?,?,?,?,?)",
-                    UUID.randomUUID().toString(), type, at(windowStart), observed, threshold, at(now)) == 1;
-        } catch (DuplicateKeyException duplicate) {
-            return false;
-        }
-    }
     Optional<Instant> lastSentAt(String phoneHash) {
         List<Timestamp> values = jdbc.query("SELECT MAX(created_at) FROM sms_verification_attempts WHERE phone_lookup_hash=? AND status IN ('PENDING','SENT','VERIFIED','CONSUMED')",
                 (rs, row) -> rs.getTimestamp(1), phoneHash);

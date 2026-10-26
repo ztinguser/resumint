@@ -17,6 +17,11 @@ resumint:
     global-minute-limit: ${SMS_GLOBAL_MINUTE_LIMIT}
     verify-failure-limit: ${SMS_VERIFY_FAILURE_LIMIT}
     daily-cost-warning-count: ${SMS_DAILY_COST_WARNING_COUNT}
+  alert:
+    email:
+      enabled: true
+      from: ${ALERT_EMAIL_FROM}
+      to: ${ALERT_EMAIL_TO}
   resume:
     max-document-bytes: ${RESUME_MAX_DOCUMENT_BYTES}
   export:

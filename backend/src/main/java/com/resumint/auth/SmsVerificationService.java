@@ -16,6 +16,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
+import com.resumint.system.OperationalAlertService;
 
 @Service
 public class SmsVerificationService {
@@ -34,8 +35,9 @@ public class SmsVerificationService {
     private final int globalMinuteLimit;
     private final int verifyFailureLimit;
     private final int dailyCostWarningCount;
+    private final OperationalAlertService alerts;
 
-    SmsVerificationService(AuthRepository repository, SmsProvider provider, Clock clock,
+    SmsVerificationService(AuthRepository repository, SmsProvider provider, Clock clock, OperationalAlertService alerts,
             @Value("${resumint.auth.phone-lookup-secrets}") String lookupSecrets,
             @Value("${resumint.sms.cooldown}") Duration cooldown,
             @Value("${resumint.sms.attempt-ttl}") Duration attemptTtl,
@@ -47,7 +49,7 @@ public class SmsVerificationService {
             @Value("${resumint.sms.global-minute-limit}") int globalMinuteLimit,
             @Value("${resumint.sms.verify-failure-limit}") int verifyFailureLimit,
             @Value("${resumint.sms.daily-cost-warning-count}") int dailyCostWarningCount) {
-        this.repository = repository; this.provider = provider; this.clock = clock;
+        this.repository = repository; this.provider = provider; this.clock = clock; this.alerts=alerts;
         this.lookupSecrets = Arrays.stream(lookupSecrets.split(",")).map(String::trim).filter(value->!value.isEmpty()).toList();
         if(this.lookupSecrets.isEmpty()||this.lookupSecrets.stream().anyMatch(value->value.length()<32))throw new IllegalArgumentException("phone lookup key ring contains an invalid secret");
         this.cooldown = cooldown; this.attemptTtl = attemptTtl; this.phoneHourLimit = phoneHourLimit;
@@ -124,7 +126,7 @@ public class SmsVerificationService {
         Instant dayStart = now.atZone(ZoneOffset.UTC).truncatedTo(ChronoUnit.DAYS).toInstant();
         long sentToday = repository.sentSince(dayStart);
         if (sentToday >= dailyCostWarningCount
-                && repository.createOperationalAlert("SMS_DAILY_COST", dayStart, sentToday, dailyCostWarningCount, now)) {
+                && alerts.create("SMS_DAILY_COST", dayStart, sentToday, dailyCostWarningCount, now)) {
             log.warn("SMS_DAILY_COST_ALERT sent={} threshold={} windowStart={}", sentToday, dailyCostWarningCount, dayStart);
         }
     }

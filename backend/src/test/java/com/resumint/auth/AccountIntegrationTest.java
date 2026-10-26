@@ -63,11 +63,14 @@ class AccountIntegrationTest {
         sendCode("18700187000","LOGIN").andExpect(status().isOk());
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM operational_alerts WHERE alert_type='SMS_DAILY_COST'",Integer.class)).isOne();
         assertThat(jdbc.queryForObject("SELECT observed_value FROM operational_alerts WHERE alert_type='SMS_DAILY_COST'",Long.class)).isEqualTo(1L);
+        assertThat(jdbc.queryForObject("SELECT notification_status FROM operational_alerts WHERE alert_type='SMS_DAILY_COST'",String.class)).isEqualTo("PENDING");
         mvc.perform(get("/api/ops/status").header("X-Ops-Token","wrong"))
                 .andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("OPS_TOKEN_INVALID"));
         String statusBody=mvc.perform(get("/api/ops/status").header("X-Ops-Token","dev-only-ops-token-change-me"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.smsCostAlertedToday").value(true))
-                .andExpect(jsonPath("$.smsDailyCostWarningCount").value(1)).andReturn().getResponse().getContentAsString();
+                .andExpect(jsonPath("$.smsDailyCostWarningCount").value(1))
+                .andExpect(jsonPath("$.alertEmailsPending").value(1))
+                .andExpect(jsonPath("$.alertEmailsFailed").value(0)).andReturn().getResponse().getContentAsString();
         assertThat(statusBody).doesNotContain("18800188000","18700187000","phone","resume");
     }
 

@@ -10,6 +10,17 @@ spring:
   flyway:
     enabled: true
     locations: classpath:db/migration
+  mail:
+    host: ${ALERT_EMAIL_SMTP_HOST:smtp.163.com}
+    port: ${ALERT_EMAIL_SMTP_PORT:465}
+    username: ${ALERT_EMAIL_USERNAME:}
+    password: ${ALERT_EMAIL_AUTHORIZATION_CODE:}
+    properties:
+      "mail.smtp.auth": true
+      "mail.smtp.ssl.enable": true
+      "mail.smtp.connectiontimeout": ${ALERT_EMAIL_CONNECTION_TIMEOUT_MS:5000}
+      "mail.smtp.timeout": ${ALERT_EMAIL_READ_TIMEOUT_MS:5000}
+      "mail.smtp.writetimeout": ${ALERT_EMAIL_WRITE_TIMEOUT_MS:5000}
 
 mybatis:
   type-handlers-package: com.resumint.persistence
@@ -55,6 +66,15 @@ resumint:
     daily-cost-warning-count: ${SMS_DAILY_COST_WARNING_COUNT:500}
   ops:
     token: ${RESUMINT_OPS_TOKEN:dev-only-ops-token-change-me}
+  alert:
+    email:
+      enabled: ${ALERT_EMAIL_ENABLED:false}
+      from: ${ALERT_EMAIL_FROM:}
+      to: ${ALERT_EMAIL_TO:}
+      poll-interval: ${ALERT_EMAIL_POLL_INTERVAL:30s}
+      retry-delay: ${ALERT_EMAIL_RETRY_DELAY:5m}
+      delivery-lease: ${ALERT_EMAIL_DELIVERY_LEASE:2m}
+      max-attempts: ${ALERT_EMAIL_MAX_ATTEMPTS:3}
   resume:
     max-document-bytes: ${RESUME_MAX_DOCUMENT_BYTES:4194304}
   export:

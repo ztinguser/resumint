@@ -15,12 +15,24 @@ final class ReleaseConfigurationGuard {
             @Value("${resumint.ops.token}") String opsToken,
             @Value("${resumint.auth.cookie-secure}") boolean secureCookies,
             @Value("${resumint.sms.provider}") String smsProvider,
+            @Value("${resumint.alert.email.enabled}") boolean emailAlertsEnabled,
+            @Value("${spring.mail.host}") String smtpHost,
+            @Value("${spring.mail.username}") String smtpUsername,
+            @Value("${spring.mail.password}") String smtpPassword,
+            @Value("${resumint.alert.email.from}") String emailFrom,
+            @Value("${resumint.alert.email.to}") String emailTo,
             @Value("${resumint.export.storage-root}") Path storageRoot) {
         requireKeyRing("AUTH_PHONE_LOOKUP_SECRETS", phoneSecrets);
         requireKeyRing("EXPORT_CREDENTIAL_SECRETS", exportSecrets);
         requireSecret("RESUMINT_OPS_TOKEN", opsToken);
         if (!secureCookies) throw new IllegalStateException("release profile requires secure cookies");
         if (!"alibaba".equals(smsProvider)) throw new IllegalStateException("release profile requires the Alibaba SMS provider");
+        if (!emailAlertsEnabled) throw new IllegalStateException("release profile requires email alerts");
+        requirePresent("ALERT_EMAIL_SMTP_HOST",smtpHost);
+        requirePresent("ALERT_EMAIL_USERNAME",smtpUsername);
+        requirePresent("ALERT_EMAIL_AUTHORIZATION_CODE",smtpPassword);
+        requirePresent("ALERT_EMAIL_FROM",emailFrom);
+        requirePresent("ALERT_EMAIL_TO",emailTo);
         if (!storageRoot.isAbsolute()) throw new IllegalStateException("release profile requires an absolute export storage root");
     }
 
@@ -32,5 +44,8 @@ final class ReleaseConfigurationGuard {
     private static void requireKeyRing(String name,String value){
         if(value==null||value.isBlank())throw new IllegalStateException(name+" is required");
         for(String secret:value.split(","))requireSecret(name,secret.trim());
+    }
+    private static void requirePresent(String name,String value){
+        if(value==null||value.isBlank()||value.contains("<"))throw new IllegalStateException(name+" is required");
     }
 }
