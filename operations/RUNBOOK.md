@@ -30,3 +30,7 @@
 首次配置优先运行 `scripts/setup-m6-email-alert.sh` 交互向导。Windows 环境可在 WSL 中进入仓库后执行 `bash scripts/setup-m6-email-alert.sh`；向导会调用 `scripts/configure-m6-email-alert.ps1`，将授权码用当前 Windows 用户的 DPAPI 保存到 `%LOCALAPPDATA%\Resumint`，公共邮箱设置保存在同一仓库外目录。需要更换邮箱或授权码时运行 PowerShell 辅助脚本的 `-RefreshCredentials` 参数，再重新运行向导。
 
 持久告警先进入 `PENDING`，发送时进入 `SENDING`，失败后按 `ALERT_EMAIL_RETRY_DELAY` 进入 `RETRY`，达到 `ALERT_EMAIL_MAX_ATTEMPTS` 后进入 `FAILED`。`GET /api/ops/status` 的 `alertEmailsPending` 和 `alertEmailsFailed` 用于发现积压；重新发送失败记录前先查明 SMTP、授权码、网络或收件规则问题，不要直接修改或删除告警行。真实送达探针使用 `LiveEmailOperationalAlertIntegrationTest`，只在显式设置 `-Dresumint.live.email.it=true` 时运行。
+
+## 真实短信联调
+
+首次真实阿里云短信验收运行 `scripts/setup-m6-live-sms.sh`。向导复用 `%LOCALAPPDATA%\Resumint` 中当前 Windows 用户可解密的 DPAPI 凭据，测试手机号和验证码使用隐藏输入且只保留在进程内存。每次完整运行只发送一条可能计费的短信；脚本验证错误验证码被拒绝、真实验证码通过、重复消费被拒绝、认证会话可用，并把费用阈值临时设为 1，等待对应邮件告警进入 `SENT`。测试使用一次性 MySQL 容器和隐藏的本地后端，结束后自动停止并清理，不执行生产部署。
