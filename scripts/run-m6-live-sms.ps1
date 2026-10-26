@@ -198,9 +198,26 @@ try {
     if ($correct.Status -ne 200) { throw "The real verification code was not accepted: HTTP $($correct.Status)" }
     $me = $client.GetAsync("http://127.0.0.1:8080/api/me").GetAwaiter().GetResult()
     if ([int]$me.StatusCode -ne 200) { throw "The authenticated session could not read /api/me." }
-    $reuse = Invoke-JsonPost $client "/api/auth/sms-login" $loginBody
-    if ($reuse.Status -ne 409 -or [string]$reuse.Body.code -ne "SMS_ATTEMPT_USED") {
-        throw "The consumed verification code was not rejected as SMS_ATTEMPT_USED."
+    # Replay without the authenticated cookie jar. Reusing $client here would make the
+    # session CSRF filter reject the POST before the consumed-attempt check is reached.
+    $replayHandler = [System.Net.Http.HttpClientHandler]::new()
+    $replayHandler.UseCookies = $false
+    $replayClient = [System.Net.Http.HttpClient]::new($replayHandler)
+    $replayClient.Timeout = [TimeSpan]::FromSeconds(15)
+    try {
+        $reuse = Invoke-JsonPost $replayClient "/api/auth/sms-login" $loginBody
+    }
+    finally {
+        $replayClient.Dispose()
+        $replayHandler.Dispose()
+    }
+    $reuseCode = if ($reuse.Body -and $reuse.Body.PSObject.Properties["code"]) {
+        [string]$reuse.Body.code
+    } else {
+        "<none>"
+    }
+    if ($reuse.Status -ne 409 -or $reuseCode -ne "SMS_ATTEMPT_USED") {
+        throw "Consumed-code replay mismatch: HTTP $($reuse.Status), code=$reuseCode."
     }
 
     $alertStatus = ""

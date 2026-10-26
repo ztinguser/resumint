@@ -94,6 +94,13 @@ class AccountIntegrationTest {
 
         Cookie session = cookie(login, AuthSessionFilter.SESSION_COOKIE);
         Cookie csrf = cookie(login, AuthSessionFilter.CSRF_COOKIE);
+        mvc.perform(post("/api/auth/sms-login").cookie(session, csrf).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"attemptId\":\""+attemptId+"\",\"phone\":\"13800138000\",\"code\":\"123456\"}"))
+                .andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("CSRF_REJECTED"));
+        mvc.perform(post("/api/auth/sms-login").cookie(session, csrf).header("X-XSRF-TOKEN", csrf.getValue())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"attemptId\":\""+attemptId+"\",\"phone\":\"13800138000\",\"code\":\"123456\"}"))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("SMS_ATTEMPT_USED"));
         assertThat(session.getMaxAge()).isBetween((int) java.time.Duration.ofDays(29).toSeconds(),
                 (int) java.time.Duration.ofDays(30).toSeconds());
         assertThat(csrf.getMaxAge()).isEqualTo(session.getMaxAge());
